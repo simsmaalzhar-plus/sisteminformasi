@@ -2808,55 +2808,121 @@ function openUserForm(existing){
 }
 
 /* ================= PENCAPAIAN SAYA (Siswa) ================= */
+/* Menyimpan siswa yang sedang dipilih pada halaman Pencapaian (hanya dipakai untuk role selain siswa) */
+let pencapaianSelectedId = null;
+
 async function renderPencapaian(){
   const content = document.getElementById('content');
-  content.innerHTML = `<div class="empty-state">${ICONS.empty}<p>Memuat data pencapaian...</p></div>`;
-  let data;
-  if(firebaseReady && currentUser.siswaId){
-    try{
-      const snap = await firebaseDB.ref('siswa_ringkasan/'+currentUser.siswaId).once('value');
-      data = snap.val();
-    }catch(e){ data = null; }
-  }
-  if(!data){
-    // mode lokal/demo atau ringkasan belum tersedia -> hitung langsung dari data yang ada
-    const siswa = DB.siswa.find(s=>s.id===currentUser.siswaId) || DB.siswa[0];
-    if(siswa){
-      const kh = DB.kehadiran.filter(r=>r.siswaId===siswa.id);
-      const hadir = kh.filter(r=>r.status==='Hadir').length;
-      const kd = DB.kedisiplinan.filter(r=>r.siswaId===siswa.id);
-      data = {
-        nama: siswa.nama, nis: siswa.nis, kelas: siswa.kelas,
-        kehadiranPct: kh.length? Math.round(hadir/kh.length*100) : null,
-        totalCatatanKehadiran: kh.length,
-        totalPoinPelanggaran: kd.reduce((a,b)=>a+(Number(b.poin)||0),0),
-        pelanggaranTerakhir: [...kd].sort((a,b)=>b.tanggal.localeCompare(a.tanggal)).slice(0,5).map(p=>({tanggal:p.tanggal, jenis:p.jenis, poin:p.poin})),
-      };
-    }
-  }
-  if(!data){
+  const isSiswaRole = currentUser.role === 'siswa';
+  // Siswa hanya boleh melihat datanya sendiri; peran lain (mis. admin/guru dengan akses halaman ini) boleh memilih siapa saja.
+  const daftarSiswa = isSiswaRole
+    ? DB.siswa.filter(s=>s.id===currentUser.siswaId)
+    : [...DB.siswa].sort((a,b)=>a.nama.localeCompare(b.nama));
+
+  if(daftarSiswa.length===0){
     content.innerHTML = emptyState('Data pencapaian belum tersedia. Hubungi admin sekolah.');
     return;
   }
-  const pct = data.kehadiranPct;
-  const poin = data.totalPoinPelanggaran || 0;
+
+  const selectedId = isSiswaRole
+    ? currentUser.siswaId
+    : (pencapaianSelectedId && daftarSiswa.some(s=>s.id===pencapaianSelectedId) ? pencapaianSelectedId : daftarSiswa[0].id);
+  pencapaianSelectedId = selectedId;
+
   content.innerHTML = `
-    <div class="card" style="text-align:center; padding:32px 20px;">
-      <div class="user-avatar" style="width:64px; height:64px; font-size:22px; margin:0 auto 14px; background:var(--accent);">${initials(data.nama)}</div>
-      <h2 style="font-family:var(--font-display); font-size:20px;">${escapeHtml(data.nama)}</h2>
-      <div style="color:var(--muted); font-size:13px; margin-top:4px;">${escapeHtml(data.kelas||'-')} &bull; NIS ${escapeHtml(data.nis||'-')}</div>
+    <div class="card">
+      <div class="card-head"><div class="flex items-center gap-8"><span class="card-icon-badge">${ICONS.siswa}</span><div><h3>Pilih Nama Siswa</h3><div class="card-sub">${isSiswaRole?'Halaman ini hanya menampilkan pencapaianmu sendiri':'Hanya nama siswa yang dapat diubah — data pencapaian di bawah bersifat lihat saja'}</div></div></div></div>
+      <div class="field" style="max-width:360px; margin-bottom:0;">
+        <label>Nama Siswa</label>
+        <select id="pencapaian-siswa-select" ${isSiswaRole?'disabled':''}>
+          ${daftarSiswa.map(s=>`<option value="${s.id}" ${s.id===selectedId?'selected':''}>${escapeHtml(s.nama)} (${escapeHtml(s.kelas)})</option>`).join('')}
+        </select>
+      </div>
     </div>
+    <div id="pencapaian-detail"></div>
+  `;
+
+  const sel = document.getElementById('pencapaian-siswa-select');
+  if(sel && !isSiswaRole){
+    sel.addEventListener('change', ()=>{
+      pencapaianSelectedId = sel.value;
+      drawPencapaianDetail(pencapaianSelectedId, isSiswaRole);
+    });
+  }
+  drawPencapaianDetail(selectedId, isSiswaRole);
+}
+
+/* Menggambar seluruh data pencapaian (nilai, kehadiran, kedisiplinan, catatan tugas) untuk satu siswa.
+   Seluruh bagian ini hanya menampilkan data (read-only), tidak ada aksi ubah/hapus. */
+function drawPencapaianDetail(siswaId, isSiswaRole){
+  const wrap = document.getElementById('pencapaian-detail');
+  const siswa = DB.siswa.find(s=>s.id===siswaId);
+  if(!siswa){ wrap.innerHTML = emptyState('Data siswa tidak ditemukan.'); return; }
+
+  // Kehadiran
+  const kh = DB.kehadiran.filter(r=>r.siswaId===siswa.id);
+  const hadir = kh.filter(r=>r.status==='Hadir').length;
+  const kehadiranPct = kh.length ? Math.round(hadir/kh.length*100) : null;
+
+  // Kedisiplinan
+  const kd = DB.kedisiplinan.filter(r=>r.siswaId===siswa.id);
+  const poin = kd.reduce((a,b)=>a+(Number(b.poin)||0),0);
+  const pelanggaranTerakhir = [...kd].sort((a,b)=>(b.tanggal||'').localeCompare(a.tanggal||'')).slice(0,5);
+
+  // Rata-rata nilai per mata pelajaran (rata-rata tiap jenis nilai, lalu dirata-rata lagi seperti di halaman Nilai Siswa)
+  const nilaiSiswa = DB.nilai.filter(n=>n.siswaId===siswa.id);
+  const byMapel = {};
+  nilaiSiswa.forEach(n=>{
+    if(!byMapel[n.mapel]) byMapel[n.mapel] = {};
+    if(!byMapel[n.mapel][n.jenis]) byMapel[n.mapel][n.jenis] = [];
+    byMapel[n.mapel][n.jenis].push(Number(n.nilai)||0);
+  });
+  const rataPerMapel = Object.keys(byMapel).sort((a,b)=>a.localeCompare(b)).map(mapel=>{
+    const jenisAverages = Object.values(byMapel[mapel]).map(arr=>arr.reduce((a,b)=>a+b,0)/arr.length);
+    const rata = jenisAverages.length ? Math.round((jenisAverages.reduce((a,b)=>a+b,0)/jenisAverages.length)*10)/10 : 0;
+    const jumlahEntri = Object.values(byMapel[mapel]).reduce((a,arr)=>a+arr.length,0);
+    return {mapel, rata, jumlahEntri};
+  });
+  const rataKeseluruhan = rataPerMapel.length ? Math.round((rataPerMapel.reduce((a,b)=>a+b.rata,0)/rataPerMapel.length)*10)/10 : null;
+
+  // Catatan tugas untuk kelas siswa ini
+  const tugasKelas = [...DB.tugas].filter(t=>t.kelas===siswa.kelas).sort((a,b)=>(a.deadline||'').localeCompare(b.deadline||''));
+
+  wrap.innerHTML = `
+    <div class="card" style="text-align:center; padding:32px 20px;">
+      <div class="user-avatar" style="width:64px; height:64px; font-size:22px; margin:0 auto 14px; background:var(--accent);">${initials(siswa.nama)}</div>
+      <h2 style="font-family:var(--font-display); font-size:20px;">${escapeHtml(siswa.nama)}</h2>
+      <div style="color:var(--muted); font-size:13px; margin-top:4px;">${escapeHtml(siswa.kelas||'-')} &bull; NIS ${escapeHtml(siswa.nis||'-')}</div>
+    </div>
+
     <div class="stat-grid">
-      ${statCard(ICONS.kehadiran, pct!==null&&pct!==undefined? pct+'%':'-', 'Persentase Kehadiran', data.totalCatatanKehadiran? data.totalCatatanKehadiran+' catatan tercatat':'Belum ada data', pct>=85?'var(--success)':pct>=60?'var(--warn)':'var(--danger)')}
+      ${statCard(ICONS.trophy, rataKeseluruhan!==null?rataKeseluruhan:'-', 'Rata-rata Nilai', rataPerMapel.length? rataPerMapel.length+' mata pelajaran tercatat':'Belum ada data nilai', rataKeseluruhan===null?'var(--muted)':rataKeseluruhan>=75?'var(--success)':rataKeseluruhan>=60?'var(--warn)':'var(--danger)')}
+      ${statCard(ICONS.kehadiran, kehadiranPct!==null&&kehadiranPct!==undefined? kehadiranPct+'%':'-', 'Persentase Kehadiran', kh.length? kh.length+' catatan tercatat':'Belum ada data', kehadiranPct===null?'var(--muted)':kehadiranPct>=85?'var(--success)':kehadiranPct>=60?'var(--warn)':'var(--danger)')}
       ${statCard(ICONS.disiplin, poin, 'Poin Pelanggaran', poin===0?'Tidak ada pelanggaran, pertahankan!':'Akumulasi poin kedisiplinan', poin===0?'var(--success)':poin<15?'var(--warn)':'var(--danger)')}
     </div>
+
+    <div class="card">
+      <div class="card-head"><div class="flex items-center gap-8"><span class="card-icon-badge" style="background:color-mix(in srgb, var(--accent) 16%, white); color:var(--accent);">${ICONS.trophy}</span><div><h3>Rata-rata Nilai per Mata Pelajaran</h3><div class="card-sub">Data lihat saja, tidak dapat diubah dari halaman ini</div></div></div></div>
+      ${rataPerMapel.length?`<div class="table-wrap"><table><thead><tr><th>Mata Pelajaran</th><th>Rata-rata Nilai</th><th>Jumlah Entri</th></tr></thead><tbody>
+        ${rataPerMapel.map(m=>`<tr><td>${escapeHtml(m.mapel)}</td><td><span class="pill ${m.rata>=75?'pill-green':m.rata>=60?'pill-amber':'pill-red'}">${m.rata}</span></td><td>${m.jumlahEntri}</td></tr>`).join('')}
+      </tbody></table></div>`:emptyState('Belum ada data nilai untuk siswa ini.')}
+    </div>
+
     <div class="card">
       <div class="card-head"><div class="flex items-center gap-8"><span class="card-icon-badge" style="background:color-mix(in srgb, var(--danger) 14%, white); color:var(--danger);">${ICONS.disiplin}</span><div><h3>Riwayat Pelanggaran Terakhir</h3><div class="card-sub">5 catatan kedisiplinan terbaru</div></div></div></div>
-      ${(data.pelanggaranTerakhir&&data.pelanggaranTerakhir.length)?`<div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Jenis</th><th>Poin</th></tr></thead><tbody>
-        ${data.pelanggaranTerakhir.map(p=>`<tr><td>${formatDateShort(p.tanggal)}</td><td>${escapeHtml(p.jenis)}</td><td><span class="pill pill-red">${p.poin} poin</span></td></tr>`).join('')}
-      </tbody></table></div>`:emptyState('Tidak ada catatan pelanggaran. Pertahankan sikap baikmu! 🌟')}
+      ${pelanggaranTerakhir.length?`<div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Jenis</th><th>Poin</th></tr></thead><tbody>
+        ${pelanggaranTerakhir.map(p=>`<tr><td>${formatDateShort(p.tanggal)}</td><td>${escapeHtml(p.jenis)}</td><td><span class="pill pill-red">${p.poin} poin</span></td></tr>`).join('')}
+      </tbody></table></div>`:emptyState('Tidak ada catatan pelanggaran. Pertahankan sikap baik! 🌟')}
     </div>
-    <div class="storage-note">${ICONS.star}<div>Halaman ini hanya menampilkan pencapaianmu sendiri. Untuk pertanyaan tentang nilai atau catatan sekolah lainnya, silakan hubungi wali kelas.</div></div>
+
+    <div class="card">
+      <div class="card-head"><div class="flex items-center gap-8"><span class="card-icon-badge">${ICONS.clipboard}</span><div><h3>Catatan Tugas</h3><div class="card-sub">Tugas yang tercatat untuk kelas ${escapeHtml(siswa.kelas||'-')}</div></div></div></div>
+      ${tugasKelas.length?`<div class="table-wrap"><table><thead><tr><th>Judul Tugas</th><th>Guru</th><th>Tenggat</th><th>Prioritas</th><th>Status</th></tr></thead><tbody>
+        ${tugasKelas.map(t=>`<tr><td>${escapeHtml(t.judul||'-')}</td><td>${escapeHtml(t.guru||'-')}</td><td>${t.deadline?formatDateShort(t.deadline):'-'}</td><td>${escapeHtml(t.prioritas||'-')}</td><td><span class="pill ${t.status==='Selesai'?'pill-green':'pill-amber'}">${escapeHtml(t.status||'-')}</span></td></tr>`).join('')}
+      </tbody></table></div>`:emptyState('Belum ada catatan tugas untuk kelas ini.')}
+    </div>
+
+    <div class="storage-note">${ICONS.star}<div>${isSiswaRole?'Halaman ini hanya menampilkan pencapaianmu sendiri. Untuk pertanyaan tentang nilai atau catatan sekolah lainnya, silakan hubungi wali kelas.':'Semua data pada halaman ini bersifat lihat saja (tidak dapat diedit). Untuk mengubah data, gunakan menu Data Siswa, Nilai, Kehadiran, Kedisiplinan, atau Catatan Tugas.'}</div></div>
   `;
 }
 
