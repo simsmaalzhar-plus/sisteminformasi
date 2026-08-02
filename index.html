@@ -622,13 +622,17 @@ const STATUS_MENGAJAR = ['Hadir','Tidak Hadir','Memberikan Tugas'];
 const JAM_KE_LIST = [1,2,3,4,5,6,7,8,9,10];
 const KEBERSIHAN_ITEMS = ['Lantai bersih & tidak berdebu','Meja dan kursi tersusun rapi','Papan tulis bersih','Tidak ada sampah berserakan','Tempat sampah tidak penuh','Dinding & jendela bersih'];
 
-/* Daftar mata pelajaran umum jenjang SMA (dapat diajarkan lebih dari 1 oleh seorang guru) */
-const MAPEL_LIST = [
+/* Daftar bawaan mata pelajaran umum jenjang SMA — hanya dipakai untuk mengisi data awal (seed).
+   Sesudah itu daftar mata pelajaran dikelola secara dinamis lewat DB.mapel (menu Data Guru > Mata Pelajaran). */
+const DEFAULT_MAPEL_LIST = [
   'Pendidikan Agama Islam','Pendidikan Pancasila','Bahasa Indonesia','Bahasa Inggris','Matematika',
   'Sejarah','Seni Budaya','Pendidikan Jasmani, Olahraga dan Kesehatan (PJOK)','Informatika',
   'Fisika','Kimia','Biologi','Ekonomi','Sosiologi','Geografi','Bahasa Asing Lainnya',
   'Prakarya dan Kewirausahaan','Muatan Lokal','Bimbingan Konseling'
 ];
+function seedMapel(){ return DEFAULT_MAPEL_LIST.map(nama=>({id:uid(), nama})); }
+/* Daftar nama mata pelajaran yang berlaku saat ini (dari DB.mapel yang bisa dikelola admin) */
+function mapelNames(){ return DB.mapel.map(m=>m.nama); }
 /* Jenis penilaian mengikuti pedoman Kemendikbud (Kurikulum Merdeka):
    Formatif (Nilai Harian & Tugas) dan Sumatif (STS, SAS, UAS) */
 const JENIS_NILAI = [
@@ -720,7 +724,7 @@ function getNavForUser(user){
 }
 
 /* ---------------- State global ---------------- */
-let DB = { siswa:[], guru:[], kehadiran:[], kedisiplinan:[], kebersihan:[], mengajar:[], tugas:[], nilai:[], users:{}, settings:null };
+let DB = { siswa:[], guru:[], kehadiran:[], kedisiplinan:[], kebersihan:[], mengajar:[], tugas:[], nilai:[], mapel:[], users:{}, settings:null };
 let currentUser = null;   // {uid, name, role, email, siswaId?, guruId?}
 let currentPage = 'dashboard';
 let firebaseApp = null, firebaseAuth = null, firebaseDB = null, firebaseReady = false;
@@ -760,7 +764,7 @@ async function storageSet(key, value){
 const LOCAL_KEY = {
   siswa:'siswa-list', guru:'guru-list', kehadiran:'kehadiran-records',
   kedisiplinan:'kedisiplinan-records', kebersihan:'kebersihan-records',
-  mengajar:'mengajar-records', tugas:'tugas-records', nilai:'nilai-records',
+  mengajar:'mengajar-records', tugas:'tugas-records', nilai:'nilai-records', mapel:'mapel-list',
 };
 
 /* ---------------- Lapisan Akses Data (DAL) ----------------
@@ -771,7 +775,13 @@ const LOCAL_KEY = {
    panggil callback re-render secara manual. */
 async function upsertRecord(collection, data, isEdit, onLocalUpdate){
   if(firebaseReady){
-    await firebaseDB.ref('data/'+collection+'/'+data.id).set(data);
+    try{
+      await firebaseDB.ref('data/'+collection+'/'+data.id).set(data);
+    }catch(err){
+      console.error('Gagal menyimpan ke Firebase ('+collection+'):', err);
+      toast('Gagal menyimpan data ke Firebase: '+(err&&err.message?err.message:'periksa Security Rules Firebase Anda'), 'error');
+      throw err;
+    }
   }else{
     DB[collection] = isEdit ? DB[collection].map(x=>x.id===data.id?data:x) : [...DB[collection], data];
     await storageSet(LOCAL_KEY[collection], DB[collection]);
@@ -780,7 +790,13 @@ async function upsertRecord(collection, data, isEdit, onLocalUpdate){
 }
 async function removeRecord(collection, id, onLocalUpdate){
   if(firebaseReady){
-    await firebaseDB.ref('data/'+collection+'/'+id).remove();
+    try{
+      await firebaseDB.ref('data/'+collection+'/'+id).remove();
+    }catch(err){
+      console.error('Gagal menghapus dari Firebase ('+collection+'):', err);
+      toast('Gagal menghapus data di Firebase: '+(err&&err.message?err.message:'periksa Security Rules Firebase Anda'), 'error');
+      throw err;
+    }
   }else{
     DB[collection] = DB[collection].filter(x=>x.id!==id);
     await storageSet(LOCAL_KEY[collection], DB[collection]);
@@ -793,7 +809,13 @@ async function bulkUpsert(collection, records, removeIds, onLocalUpdate){
     const updates = {};
     (removeIds||[]).forEach(id=> updates['data/'+collection+'/'+id] = null);
     records.forEach(r=> updates['data/'+collection+'/'+r.id] = r);
-    await firebaseDB.ref().update(updates);
+    try{
+      await firebaseDB.ref().update(updates);
+    }catch(err){
+      console.error('Gagal menyimpan banyak data ke Firebase ('+collection+'):', err);
+      toast('Gagal menyimpan data ke Firebase: '+(err&&err.message?err.message:'periksa Security Rules Firebase Anda'), 'error');
+      throw err;
+    }
   }else{
     DB[collection] = DB[collection].filter(x=> !(removeIds||[]).includes(x.id));
     DB[collection] = [...DB[collection], ...records];
@@ -821,13 +843,26 @@ function detachFirebaseListeners(){
   fbListeners = [];
 }
 function attachFirebaseListeners(){
-  const collections = ['siswa','guru','kehadiran','kedisiplinan','kebersihan','mengajar','tugas','nilai'];
+  const collections = ['siswa','guru','kehadiran','kedisiplinan','kebersihan','mengajar','tugas','nilai','mapel'];
+  const erroredCols = new Set();
+  let mapelSeedTried = false;
   collections.forEach(col=>{
     const ref = firebaseDB.ref('data/'+col);
     const fn = ref.on('value', snap=>{
       const val = snap.val() || {};
       DB[col] = Object.keys(val).map(id=>({...val[id], id}));
       onCollectionUpdated(col);
+      // Isi otomatis daftar mata pelajaran standar sekali saja bila koleksi masih kosong
+      if(col==='mapel' && DB.mapel.length===0 && !mapelSeedTried){
+        mapelSeedTried = true;
+        const records = DEFAULT_MAPEL_LIST.map(nama=>({id:uid(), nama}));
+        bulkUpsert('mapel', records, [], null).catch(()=>{ /* pesan error sudah ditampilkan oleh bulkUpsert */ });
+      }
+    }, err=>{
+      if(erroredCols.has(col)) return; // hindari toast berulang untuk koleksi yang sama
+      erroredCols.add(col);
+      console.error('Gagal membaca data Firebase ('+col+'):', err);
+      toast('Gagal memuat data "'+col+'" dari Firebase: '+(err&&err.message?err.message:'periksa Security Rules Firebase Anda'), 'error');
     });
     fbListeners.push({ref, fn});
   });
@@ -842,6 +877,7 @@ function onCollectionUpdated(col){
     mengajar: ['mengajar','dashboard'],
     tugas: ['tugas','dashboard'],
     nilai: ['siswa','dashboard'],
+    mapel: ['guru','siswa','dashboard'],
   };
   if(affects[col] && affects[col].includes(currentPage) && document.getElementById('app-shell').classList.contains('active')){
     navigate(currentPage);
@@ -962,20 +998,22 @@ async function boot(){
 
   if(!firebaseReady){
     // Mode lokal/offline: siapkan data contoh bila belum ada
-    const [siswa, guru, kehadiran, kedisiplinan, kebersihan, mengajar, tugas, nilai] = await Promise.all([
+    const [siswa, guru, kehadiran, kedisiplinan, kebersihan, mengajar, tugas, nilai, mapel] = await Promise.all([
       storageGet('siswa-list', null), storageGet('guru-list', null),
       storageGet('kehadiran-records', []), storageGet('kedisiplinan-records', []),
       storageGet('kebersihan-records', []), storageGet('mengajar-records', []),
-      storageGet('tugas-records', null), storageGet('nilai-records', []),
+      storageGet('tugas-records', null), storageGet('nilai-records', []), storageGet('mapel-list', null),
     ]);
     DB.siswa = siswa===null ? seedSiswa() : siswa;
     DB.guru = guru===null ? seedGuru() : guru;
     DB.kehadiran = kehadiran; DB.kedisiplinan = kedisiplinan; DB.kebersihan = kebersihan; DB.mengajar = mengajar;
     DB.tugas = tugas===null ? seedTugas() : tugas;
     DB.nilai = nilai;
+    DB.mapel = mapel===null ? seedMapel() : mapel;
     if(siswa===null) storageSet('siswa-list', DB.siswa);
     if(guru===null) storageSet('guru-list', DB.guru);
     if(tugas===null) storageSet('tugas-records', DB.tugas);
+    if(mapel===null) storageSet('mapel-list', DB.mapel);
   }
 
   setupLogin();
@@ -1564,31 +1602,52 @@ function openSiswaForm(existing){
 function renderNilaiTab(){
   const body = document.getElementById('siswa-tab-body');
   const tahunOpts = tahunAjaranOptions();
+  const namesMapel = mapelNames();
   body.innerHTML = `
-    <div class="flex justify-between items-center gap-8" style="flex-wrap:wrap; margin-bottom:14px;">
-      <div class="card-sub">${DB.nilai.length} entri nilai tercatat</div>
-      <div class="flex gap-8">
-        <button class="btn btn-outline btn-sm" id="btn-sync-nilai">${ICONS.cloud} Kirim ke Sheet</button>
-        <button class="btn btn-primary btn-sm" id="btn-add-nilai">${ICONS.plus} Input Nilai</button>
+    <div class="card" style="margin-bottom:22px; box-shadow:none; border:1px solid var(--border); padding:18px;">
+      <div class="card-head"><div class="flex items-center gap-8"><span class="card-icon-badge">${ICONS.siswa}</span><div><h3>Input Nilai per Kelas (Massal)</h3><div class="card-sub">Isi nilai sekelas sekaligus, tidak perlu satu per satu</div></div></div></div>
+      <div class="form-grid" style="margin-bottom:16px;">
+        <div class="field"><label>Kelas</label><select id="nm-kelas"><option value="">- Pilih Kelas -</option>${KELAS_LIST.map(k=>`<option value="${k}">${k}</option>`).join('')}</select></div>
+        <div class="field"><label>Mata Pelajaran</label><select id="nm-mapel">${namesMapel.length?namesMapel.map(m=>`<option value="${m}">${m}</option>`).join(''):'<option value="">Belum ada data mapel</option>'}</select></div>
+        <div class="field"><label>Jenis Nilai</label><select id="nm-jenis">${JENIS_NILAI.map(j=>`<option value="${j.key}">${j.label}</option>`).join('')}</select></div>
+        <div class="field"><label>Semester</label><select id="nm-semester">${SEMESTER_LIST.map(s=>`<option value="${s}">${s}</option>`).join('')}</select></div>
+        <div class="field"><label>Tahun Ajaran</label><select id="nm-tahun">${tahunOpts.map(t=>`<option value="${t}" ${t===tahunAjaranSekarang()?'selected':''}>${t}</option>`).join('')}</select></div>
+        <div class="field"><label>Tanggal</label><input type="date" id="nm-tanggal" value="${todayStr()}"/></div>
       </div>
+      <div id="nilai-massal-table"></div>
     </div>
-    <div class="toolbar">
-      <input class="search-input" id="nilai-search" placeholder="Cari nama siswa..."/>
-      <select class="select-input" id="nilai-filter-kelas"><option value="">Semua Kelas</option>${KELAS_LIST.map(k=>`<option value="${k}">${k}</option>`).join('')}</select>
-      <select class="select-input" id="nilai-filter-mapel"><option value="">Semua Mapel</option>${MAPEL_LIST.map(m=>`<option value="${m}">${m}</option>`).join('')}</select>
-      <select class="select-input" id="nilai-filter-semester"><option value="">Semua Semester</option>${SEMESTER_LIST.map(s=>`<option value="${s}">${s}</option>`).join('')}</select>
-      <select class="select-input" id="nilai-filter-tahun"><option value="">Semua Tahun Ajaran</option>${tahunOpts.map(t=>`<option value="${t}" ${t===tahunAjaranSekarang()?'selected':''}>${t}</option>`).join('')}</select>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="flex items-center gap-8"><span class="card-icon-badge">${ICONS.clipboard}</span><div><h3>Riwayat Nilai</h3><div class="card-sub">${DB.nilai.length} entri nilai tercatat</div></div></div>
+        <div class="flex gap-8">
+          <button class="btn btn-outline btn-sm" id="btn-sync-nilai">${ICONS.cloud} Kirim ke Sheet</button>
+          <button class="btn btn-primary btn-sm" id="btn-add-nilai">${ICONS.plus} Input Satu Siswa</button>
+        </div>
+      </div>
+      <div class="toolbar">
+        <input class="search-input" id="nilai-search" placeholder="Cari nama siswa..."/>
+        <select class="select-input" id="nilai-filter-kelas"><option value="">Semua Kelas</option>${KELAS_LIST.map(k=>`<option value="${k}">${k}</option>`).join('')}</select>
+        <select class="select-input" id="nilai-filter-mapel"><option value="">Semua Mapel</option>${namesMapel.map(m=>`<option value="${m}">${m}</option>`).join('')}</select>
+        <select class="select-input" id="nilai-filter-semester"><option value="">Semua Semester</option>${SEMESTER_LIST.map(s=>`<option value="${s}">${s}</option>`).join('')}</select>
+        <select class="select-input" id="nilai-filter-tahun"><option value="">Semua Tahun Ajaran</option>${tahunOpts.map(t=>`<option value="${t}" ${t===tahunAjaranSekarang()?'selected':''}>${t}</option>`).join('')}</select>
+      </div>
+      <div class="info-box" style="margin-bottom:16px;">
+        Jenis nilai mengikuti pedoman Kemendikbud (Kurikulum Merdeka): <b>Nilai Harian</b> dan <b>Nilai Tugas</b> (penilaian formatif), serta <b>STS</b>, <b>SAS</b>, dan <b>UAS</b> (penilaian sumatif). Nilai Akhir dihitung otomatis sebagai rata-rata dari setiap jenis yang sudah diisi.
+      </div>
+      <div id="nilai-table"></div>
     </div>
-    <div class="info-box" style="margin-bottom:16px;">
-      Jenis nilai mengikuti pedoman Kemendikbud (Kurikulum Merdeka): <b>Nilai Harian</b> dan <b>Nilai Tugas</b> (penilaian formatif), serta <b>STS</b>, <b>SAS</b>, dan <b>UAS</b> (penilaian sumatif). Nilai Akhir dihitung otomatis sebagai rata-rata dari setiap jenis yang sudah diisi.
-    </div>
-    <div id="nilai-table"></div>
 
     <div class="card" style="margin-top:22px; box-shadow:none; border:1px solid var(--border); padding:18px;">
       <div class="card-head"><div class="flex items-center gap-8"><span class="card-icon-badge" style="background:color-mix(in srgb, var(--accent) 16%, white); color:var(--accent);">${ICONS.trophy}</span><div><h3>Rata-rata Nilai per Siswa</h3><div class="card-sub">Peringkat berdasarkan filter kelas / mapel / semester / tahun ajaran di atas</div></div></div></div>
       <div id="nilai-rata-table"></div>
     </div>
   `;
+  ['nm-kelas','nm-mapel','nm-jenis','nm-semester','nm-tahun','nm-tanggal'].forEach(id=>{
+    document.getElementById(id).addEventListener('change', drawNilaiMassalTable);
+  });
+  drawNilaiMassalTable();
+
   ['nilai-filter-kelas','nilai-filter-mapel','nilai-filter-semester','nilai-filter-tahun'].forEach(id=>{
     document.getElementById(id).addEventListener('change', drawNilaiTable);
   });
@@ -1596,6 +1655,52 @@ function renderNilaiTab(){
   document.getElementById('btn-add-nilai').addEventListener('click', ()=>openNilaiForm());
   document.getElementById('btn-sync-nilai').addEventListener('click', ()=>syncToSheet('Nilai Siswa', DB.nilai.map(n=>({Nama:n.nama, NIS:n.nis||'', Kelas:n.kelas, 'Mata Pelajaran':n.mapel, 'Jenis Nilai':(JENIS_NILAI.find(j=>j.key===n.jenis)||{}).label||n.jenis, Nilai:n.nilai, Semester:n.semester, 'Tahun Ajaran':n.tahunAjaran, Tanggal:n.tanggal||'', Keterangan:n.keterangan||''}))));
   drawNilaiTable();
+}
+/* Input nilai satu kelas sekaligus (mirip form Kehadiran Siswa) */
+function drawNilaiMassalTable(){
+  const kelas = document.getElementById('nm-kelas').value;
+  const mapel = document.getElementById('nm-mapel').value;
+  const jenis = document.getElementById('nm-jenis').value;
+  const semester = document.getElementById('nm-semester').value;
+  const tahun = document.getElementById('nm-tahun').value;
+  const tanggal = document.getElementById('nm-tanggal').value || todayStr();
+  const wrap = document.getElementById('nilai-massal-table');
+  if(!kelas){ wrap.innerHTML = emptyState('Pilih kelas untuk mulai input nilai satu kelas sekaligus.'); return; }
+  if(!mapel){ wrap.innerHTML = emptyState('Tambahkan data mata pelajaran terlebih dahulu di tab Mata Pelajaran pada menu Data Guru.'); return; }
+  const siswaKelas = DB.siswa.filter(s=>s.kelas===kelas);
+  if(siswaKelas.length===0){ wrap.innerHTML = emptyState('Belum ada siswa terdaftar di kelas ini.'); return; }
+  const existingMap = {};
+  DB.nilai.filter(n=> n.kelas===kelas && n.mapel===mapel && n.jenis===jenis && n.semester===semester && n.tahunAjaran===tahun && n.tanggal===tanggal)
+    .forEach(n=> existingMap[n.siswaId] = n);
+  wrap.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Nama</th><th>NIS</th><th>Nilai (0-100)</th><th>Keterangan</th></tr></thead><tbody>
+    ${siswaKelas.map(s=>{
+      const ex = existingMap[s.id];
+      return `<tr><td>${escapeHtml(s.nama)}</td><td>${escapeHtml(s.nis||'-')}</td>
+        <td><input type="number" min="0" max="100" class="search-input nm-nilai" data-sid="${s.id}" value="${ex?ex.nilai:''}" placeholder="-"/></td>
+        <td><input class="search-input nm-ket" data-sid="${s.id}" value="${ex?escapeHtml(ex.keterangan||''):''}" placeholder="opsional"/></td></tr>`;
+    }).join('')}
+  </tbody></table></div>
+  <div style="margin-top:16px; text-align:right;"><button class="btn btn-primary" id="btn-save-nilai-massal">Simpan Semua Nilai Kelas ${escapeHtml(kelas)}</button></div>`;
+
+  document.getElementById('btn-save-nilai-massal').addEventListener('click', async ()=>{
+    const removeIds = DB.nilai.filter(n=> n.kelas===kelas && n.mapel===mapel && n.jenis===jenis && n.semester===semester && n.tahunAjaran===tahun && n.tanggal===tanggal).map(n=>n.id);
+    const newRecords = [];
+    siswaKelas.forEach(s=>{
+      const nilaiInput = wrap.querySelector(`.nm-nilai[data-sid="${s.id}"]`);
+      const val = nilaiInput.value;
+      if(val===''){ return; } // siswa yang dikosongkan dianggap belum dinilai, tidak disimpan
+      const ket = wrap.querySelector(`.nm-ket[data-sid="${s.id}"]`).value.trim();
+      newRecords.push({
+        id: uid(), siswaId: s.id, nama: s.nama, nis: s.nis, kelas: s.kelas,
+        mapel, jenis, nilai: Math.max(0, Math.min(100, Number(val)||0)),
+        tanggal, semester, tahunAjaran: tahun, keterangan: ket,
+      });
+    });
+    if(newRecords.length===0){ toast('Belum ada nilai yang diisi', 'error'); return; }
+    await bulkUpsert('nilai', newRecords, removeIds, null);
+    if(!firebaseReady){ drawNilaiMassalTable(); drawNilaiTable(); }
+    toast(newRecords.length+' nilai siswa kelas '+kelas+' tersimpan', 'success');
+  });
 }
 function getNilaiFilters(){
   return {
@@ -1686,7 +1791,7 @@ function openNilaiForm(existing){
       <div class="modal-body"><div class="form-grid">
         <div class="field"><label>Kelas</label><select id="f-nilai-kelas"><option value="">Semua Kelas</option>${KELAS_LIST.map(k=>`<option value="${k}" ${kelasAwal===k?'selected':''}>${k}</option>`).join('')}</select></div>
         <div class="field"><label>Siswa</label><select required id="f-nilai-siswa">${siswaOptions(kelasAwal)}</select></div>
-        <div class="field"><label>Mata Pelajaran</label><select required id="f-nilai-mapel">${MAPEL_LIST.map(m=>`<option value="${m}" ${isEdit&&existing.mapel===m?'selected':''}>${m}</option>`).join('')}</select></div>
+        <div class="field"><label>Mata Pelajaran</label><select required id="f-nilai-mapel">${mapelNames().map(m=>`<option value="${m}" ${isEdit&&existing.mapel===m?'selected':''}>${m}</option>`).join('') || '<option value="">Belum ada data mapel</option>'}</select></div>
         <div class="field"><label>Jenis Nilai</label><select required id="f-nilai-jenis">${JENIS_NILAI.map(j=>`<option value="${j.key}" ${isEdit&&existing.jenis===j.key?'selected':''}>${j.label}</option>`).join('')}</select></div>
         <div class="field"><label>Nilai (0-100)</label><input required type="number" min="0" max="100" id="f-nilai-angka" value="${isEdit?existing.nilai:''}"/></div>
         <div class="field"><label>Tanggal</label><input type="date" id="f-nilai-tanggal" value="${isEdit&&existing.tanggal?existing.tanggal:todayStr()}"/></div>
@@ -1726,21 +1831,40 @@ function openNilaiForm(existing){
   });
 }
 
-/* ================= DATA GURU ================= */
+/* ================= DATA GURU (tab: Data Guru / Mata Pelajaran) ================= */
+let guruActiveTab = 'data';
 function renderGuru(){
   const content = document.getElementById('content');
   content.innerHTML = `
     <div class="card">
       <div class="card-head">
         <div class="flex items-center gap-8"><span class="card-icon-badge" style="background:color-mix(in srgb, var(--accent) 16%, white); color:var(--accent);">${ICONS.guru}</span><div><h3>Data Guru</h3><div class="card-sub">${DB.guru.length} guru terdaftar</div></div></div>
-        <div class="flex gap-8">
-          <button class="btn btn-outline btn-sm" id="btn-sync-guru">${ICONS.cloud} Kirim ke Sheet</button>
-          <button class="btn btn-primary btn-sm" id="btn-add-guru">${ICONS.plus} Tambah Guru</button>
-        </div>
       </div>
-      <div class="toolbar"><input class="search-input" id="guru-search" placeholder="Cari nama atau mapel..."/></div>
-      <div id="guru-table"></div>
+      <div class="subtab-row">
+        <button class="subtab-btn ${guruActiveTab==='data'?'active':''}" data-tab="data">${ICONS.guru} Data Guru</button>
+        <button class="subtab-btn ${guruActiveTab==='mapel'?'active':''}" data-tab="mapel">${ICONS.clipboard} Mata Pelajaran</button>
+      </div>
+      <div id="guru-tab-body"></div>
     </div>
+  `;
+  content.querySelectorAll('.subtab-btn').forEach(b=>b.addEventListener('click', ()=>{
+    guruActiveTab = b.dataset.tab;
+    renderGuru();
+  }));
+  if(guruActiveTab==='mapel') renderMapelTab(); else renderGuruDataTab();
+}
+function renderGuruDataTab(){
+  const body = document.getElementById('guru-tab-body');
+  body.innerHTML = `
+    <div class="flex justify-between items-center gap-8" style="flex-wrap:wrap; margin-bottom:14px;">
+      <div></div>
+      <div class="flex gap-8">
+        <button class="btn btn-outline btn-sm" id="btn-sync-guru">${ICONS.cloud} Kirim ke Sheet</button>
+        <button class="btn btn-primary btn-sm" id="btn-add-guru">${ICONS.plus} Tambah Guru</button>
+      </div>
+    </div>
+    <div class="toolbar"><input class="search-input" id="guru-search" placeholder="Cari nama atau mapel..."/></div>
+    <div id="guru-table"></div>
   `;
   document.getElementById('btn-add-guru').addEventListener('click', ()=>openGuruForm());
   document.getElementById('btn-sync-guru').addEventListener('click', ()=>syncToSheet('Data Guru', DB.guru.map(g=>({NIP:g.nip, Nama:g.nama, 'Mata Pelajaran':guruMapelDisplay(g), 'No HP':g.hp, Email:g.email}))));
@@ -1770,11 +1894,94 @@ function drawGuruTable(){
     }
   }));
 }
+/* ---- Sub-tab: Mata Pelajaran (dikelola terpisah, dipakai bersama oleh Data Guru & Nilai Siswa) ---- */
+function renderMapelTab(){
+  const body = document.getElementById('guru-tab-body');
+  body.innerHTML = `
+    <div class="info-box" style="margin-bottom:16px;">
+      Daftar mata pelajaran di sini dipakai bersama untuk pemilihan mapel guru dan input nilai siswa. Mata pelajaran yang ditambahkan di bawah akan langsung tersedia di kedua tempat tersebut.
+    </div>
+    <div id="mapel-list"></div>
+    <div class="card" style="margin-top:18px; box-shadow:none; border:1px solid var(--border); padding:16px;">
+      <label style="display:block; font-size:12.5px; font-weight:700; color:var(--muted); margin-bottom:8px;">${ICONS.plus} Tambah Mata Pelajaran Baru</label>
+      <div class="flex gap-8">
+        <input class="search-input" id="mapel-input-baru" placeholder="Nama mata pelajaran baru, contoh: Bahasa Mandarin" style="flex:1;"/>
+        <button class="btn btn-primary btn-sm" id="btn-add-mapel">${ICONS.plus} Tambah</button>
+      </div>
+      <div class="card-sub" style="margin-top:8px;">Setelah ditambahkan, mata pelajaran ini otomatis muncul di pilihan Data Guru dan Nilai Siswa.</div>
+    </div>
+  `;
+  document.getElementById('btn-add-mapel').addEventListener('click', addMapelFromInput);
+  document.getElementById('mapel-input-baru').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); addMapelFromInput(); } });
+  drawMapelList();
+}
+async function addMapelFromInput(){
+  const input = document.getElementById('mapel-input-baru');
+  const nama = input.value.trim();
+  if(!nama){ toast('Isi nama mata pelajaran terlebih dahulu', 'error'); return; }
+  if(mapelNames().some(m=>m.toLowerCase()===nama.toLowerCase())){ toast('Mata pelajaran ini sudah ada di daftar', 'error'); return; }
+  await upsertRecord('mapel', {id:uid(), nama}, false, null);
+  input.value = '';
+  if(!firebaseReady){ if(guruActiveTab==='mapel') drawMapelList(); }
+  toast('Mata pelajaran ditambahkan', 'success');
+}
+function drawMapelList(){
+  const wrap = document.getElementById('mapel-list');
+  if(!wrap) return;
+  if(DB.mapel.length===0){
+    wrap.innerHTML = emptyState('Belum ada data mata pelajaran.') +
+      `<div style="text-align:center; margin-top:10px;"><button class="btn btn-outline btn-sm" id="btn-seed-mapel">${ICONS.cloud} Isi Daftar Mata Pelajaran Standar</button></div>`;
+    const seedBtn = document.getElementById('btn-seed-mapel');
+    if(seedBtn) seedBtn.addEventListener('click', async ()=>{
+      const records = DEFAULT_MAPEL_LIST.map(nama=>({id:uid(), nama}));
+      await bulkUpsert('mapel', records, [], drawMapelList);
+      if(!firebaseReady) drawMapelList();
+      toast('Daftar mata pelajaran standar ditambahkan', 'success');
+    });
+    return;
+  }
+  const sorted = [...DB.mapel].sort((a,b)=>a.nama.localeCompare(b.nama));
+  wrap.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Nama Mata Pelajaran</th><th>Dipakai Guru</th><th>Dipakai di Nilai</th><th></th></tr></thead><tbody>
+    ${sorted.map(m=>{
+      const jumlahGuru = DB.guru.filter(g=> guruMapelArr(g).includes(m.nama)).length;
+      const jumlahNilai = DB.nilai.filter(n=> n.mapel===m.nama).length;
+      return `<tr>
+        <td>${escapeHtml(m.nama)}</td>
+        <td><span class="pill pill-gray">${jumlahGuru} guru</span></td>
+        <td><span class="pill pill-gray">${jumlahNilai} entri</span></td>
+        <td><div class="row-actions">
+          <button class="btn-icon btn-edit-mapel" data-id="${m.id}">${ICONS.edit}</button>
+          <button class="btn-icon btn-del-mapel" data-id="${m.id}">${ICONS.trash}</button>
+        </div></td></tr>`;
+    }).join('')}
+  </tbody></table></div>`;
+  wrap.querySelectorAll('.btn-edit-mapel').forEach(b=>b.addEventListener('click', async ()=>{
+    const m = DB.mapel.find(x=>x.id===b.dataset.id);
+    const namaBaru = prompt('Ubah nama mata pelajaran:', m.nama);
+    if(namaBaru===null) return;
+    const trimmed = namaBaru.trim();
+    if(!trimmed){ toast('Nama mata pelajaran tidak boleh kosong', 'error'); return; }
+    await upsertRecord('mapel', {...m, nama:trimmed}, true, drawMapelList);
+    if(!firebaseReady) drawMapelList();
+    toast('Mata pelajaran diperbarui', 'success');
+  }));
+  wrap.querySelectorAll('.btn-del-mapel').forEach(b=>b.addEventListener('click', async ()=>{
+    const m = DB.mapel.find(x=>x.id===b.dataset.id);
+    const jumlahGuru = DB.guru.filter(g=> guruMapelArr(g).includes(m.nama)).length;
+    const jumlahNilai = DB.nilai.filter(n=> n.mapel===m.nama).length;
+    const pesan = (jumlahGuru>0 || jumlahNilai>0)
+      ? `Mata pelajaran "${m.nama}" masih dipakai oleh ${jumlahGuru} guru dan ${jumlahNilai} entri nilai. Data guru/nilai yang sudah ada tidak akan terhapus, tapi mapel ini tidak akan muncul lagi di pilihan baru. Tetap hapus?`
+      : `Hapus mata pelajaran "${m.nama}"?`;
+    if(confirm(pesan)){
+      await removeRecord('mapel', m.id, drawMapelList);
+      if(!firebaseReady) drawMapelList();
+      toast('Mata pelajaran dihapus', 'success');
+    }
+  }));
+}
 function openGuruForm(existing){
   const isEdit = !!existing;
   const existingMapel = isEdit ? guruMapelArr(existing) : [];
-  const existingMapelBaku = existingMapel.filter(m=>MAPEL_LIST.includes(m));
-  const existingMapelCustom = existingMapel.filter(m=>!MAPEL_LIST.includes(m));
   openModal(`
     <div class="modal-head"><h3>${isEdit?'Edit':'Tambah'} Data Guru</h3><button class="btn-icon" onclick="closeModal()">${ICONS.close}</button></div>
     <form id="guru-form">
@@ -1785,11 +1992,12 @@ function openGuruForm(existing){
         <div class="field full"><label>Email</label><input type="email" id="f-email" value="${isEdit?escapeHtml(existing.email):''}"/></div>
         <div class="field full">
           <label>Mata Pelajaran yang Diajarkan (boleh pilih lebih dari satu)</label>
-          <div class="mapel-check-grid">
-            ${MAPEL_LIST.map(m=>`<label class="mapel-check-item"><input type="checkbox" class="f-mapel-check" value="${escapeHtml(m)}" ${existingMapelBaku.includes(m)?'checked':''}/> ${escapeHtml(m)}</label>`).join('')}
+          <div class="mapel-check-grid" id="f-mapel-grid"></div>
+          <div class="flex gap-8" style="margin-top:8px;">
+            <input id="f-mapel-quickadd" placeholder="Belum ada di daftar? Ketik nama mapel baru di sini..." style="flex:1;"/>
+            <button type="button" class="btn btn-outline btn-sm" id="btn-quickadd-mapel">${ICONS.plus} Tambah &amp; Centang</button>
           </div>
         </div>
-        <div class="field full"><label>Mata Pelajaran Tambahan (opsional, pisahkan dengan koma jika lebih dari satu)</label><input id="f-mapel-custom" placeholder="Contoh: Bahasa Mandarin, Ekstrakurikuler Pramuka" value="${escapeHtml(existingMapelCustom.join(', '))}"/></div>
       </div></div>
       <div class="modal-foot">
         <button type="button" class="btn btn-outline" onclick="closeModal()">Batal</button>
@@ -1797,11 +2005,29 @@ function openGuruForm(existing){
       </div>
     </form>
   `);
+  const renderMapelGrid = (checkedNow)=>{
+    const grid = document.getElementById('f-mapel-grid');
+    const names = mapelNames();
+    grid.innerHTML = names.length
+      ? names.map(m=>`<label class="mapel-check-item"><input type="checkbox" class="f-mapel-check" value="${escapeHtml(m)}" ${checkedNow.includes(m)?'checked':''}/> ${escapeHtml(m)}</label>`).join('')
+      : `<div style="font-size:12.5px; color:var(--muted);">Belum ada data mata pelajaran. Tambahkan lewat kotak di bawah ini.</div>`;
+  };
+  renderMapelGrid(existingMapel);
+  document.getElementById('btn-quickadd-mapel').addEventListener('click', async ()=>{
+    const input = document.getElementById('f-mapel-quickadd');
+    const nama = input.value.trim();
+    if(!nama){ toast('Ketik dulu nama mata pelajaran barunya', 'error'); return; }
+    const checkedSoFar = Array.from(document.querySelectorAll('.f-mapel-check:checked')).map(cb=>cb.value);
+    if(!mapelNames().some(m=>m.toLowerCase()===nama.toLowerCase())){
+      await upsertRecord('mapel', {id:uid(), nama}, false, null);
+    }
+    input.value = '';
+    renderMapelGrid([...checkedSoFar, nama]);
+    toast('Mata pelajaran "'+nama+'" ditambahkan ke daftar', 'success');
+  });
   document.getElementById('guru-form').addEventListener('submit', async function(e){
     e.preventDefault();
     const checked = Array.from(document.querySelectorAll('.f-mapel-check:checked')).map(cb=>cb.value);
-    const custom = document.getElementById('f-mapel-custom').value.trim();
-    if(custom) checked.push(...custom.split(',').map(s=>s.trim()).filter(Boolean));
     if(checked.length===0){ toast('Pilih minimal satu mata pelajaran yang diajarkan', 'error'); return; }
     const data = {
       id: isEdit?existing.id:uid(),
@@ -2805,7 +3031,7 @@ function renderPengaturan(){
   document.getElementById('btn-export-data').addEventListener('click', ()=>{
     const backup = {
       exportedAt: new Date().toISOString(), siswa: DB.siswa, guru: DB.guru, kehadiran: DB.kehadiran,
-      kedisiplinan: DB.kedisiplinan, kebersihan: DB.kebersihan, mengajar: DB.mengajar, tugas: DB.tugas, nilai: DB.nilai, settings: DB.settings,
+      kedisiplinan: DB.kedisiplinan, kebersihan: DB.kebersihan, mengajar: DB.mengajar, tugas: DB.tugas, nilai: DB.nilai, mapel: DB.mapel, settings: DB.settings,
     };
     const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
     const a = document.createElement('a');
@@ -2823,12 +3049,12 @@ function renderPengaturan(){
         if(!confirm('Impor data ini akan MENGGANTI seluruh data yang tersimpan saat ini di perangkat ini. Lanjutkan?')) return;
         DB.siswa = data.siswa || []; DB.guru = data.guru || []; DB.kehadiran = data.kehadiran || [];
         DB.kedisiplinan = data.kedisiplinan || []; DB.kebersihan = data.kebersihan || [];
-        DB.mengajar = data.mengajar || []; DB.tugas = data.tugas || []; DB.nilai = data.nilai || []; DB.settings = data.settings || DB.settings;
+        DB.mengajar = data.mengajar || []; DB.tugas = data.tugas || []; DB.nilai = data.nilai || []; DB.mapel = data.mapel || []; DB.settings = data.settings || DB.settings;
         Promise.all([
           storageSet('siswa-list', DB.siswa), storageSet('guru-list', DB.guru),
           storageSet('kehadiran-records', DB.kehadiran), storageSet('kedisiplinan-records', DB.kedisiplinan),
           storageSet('kebersihan-records', DB.kebersihan), storageSet('mengajar-records', DB.mengajar),
-          storageSet('tugas-records', DB.tugas), storageSet('nilai-records', DB.nilai), storageSet('app-settings', DB.settings),
+          storageSet('tugas-records', DB.tugas), storageSet('nilai-records', DB.nilai), storageSet('mapel-list', DB.mapel), storageSet('app-settings', DB.settings),
         ]).then(()=>{
           applyTheme(DB.settings.theme || DEFAULT_THEME);
           toast('Data berhasil diimpor', 'success');
