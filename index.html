@@ -681,11 +681,11 @@ const NAV_BY_ROLE = {
   admin: [
     {key:'dashboard', label:'Dashboard', icon:ICONS.dashboard},
     {key:'siswa', label:'Data Siswa', icon:ICONS.siswa},
+    {key:'nilai', label:'Nilai Siswa', icon:ICONS.star},
     {key:'guru', label:'Data Guru', icon:ICONS.guru},
-    {key:'kehadiran', label:'Kehadiran Siswa', icon:ICONS.kehadiran},
+    {key:'kehadiran', label:'Kehadiran', icon:ICONS.kehadiran},
     {key:'kedisiplinan', label:'Kedisiplinan', icon:ICONS.disiplin},
     {key:'kebersihan', label:'Kebersihan Kelas', icon:ICONS.bersih},
-    {key:'mengajar', label:'Kehadiran Guru', icon:ICONS.mengajar},
     {key:'tugas', label:'Catatan Tugas', icon:ICONS.clipboard},
     {key:'pengguna', label:'Kelola Pengguna', icon:ICONS.users},
     {key:'pengaturan', label:'Pengaturan', icon:ICONS.settings},
@@ -704,11 +704,11 @@ const NAV_BY_ROLE = {
 const ALL_NAV_ITEMS = [
   {key:'dashboard', label:'Dashboard', icon:ICONS.dashboard},
   {key:'siswa', label:'Data Siswa', icon:ICONS.siswa},
+  {key:'nilai', label:'Nilai Siswa', icon:ICONS.star},
   {key:'guru', label:'Data Guru', icon:ICONS.guru},
-  {key:'kehadiran', label:'Kehadiran Siswa', icon:ICONS.kehadiran},
+  {key:'kehadiran', label:'Kehadiran', icon:ICONS.kehadiran},
   {key:'kedisiplinan', label:'Kedisiplinan', icon:ICONS.disiplin},
   {key:'kebersihan', label:'Kebersihan Kelas', icon:ICONS.bersih},
-  {key:'mengajar', label:'Kehadiran Guru', icon:ICONS.mengajar},
   {key:'tugas', label:'Catatan Tugas', icon:ICONS.clipboard},
   {key:'pengguna', label:'Kelola Pengguna', icon:ICONS.users},
   {key:'pencapaian', label:'Pencapaian Saya', icon:ICONS.dashboard},
@@ -1128,10 +1128,10 @@ function navigate(page){
   const content = document.getElementById('content');
   content.innerHTML = '';
   const renderers = {
-    dashboard: renderDashboard, siswa: renderSiswa, guru: renderGuru,
+    dashboard: renderDashboard, siswa: renderSiswa, nilai: renderNilai, guru: renderGuru,
     kehadiran: currentUser.role==='guru' ? renderKehadiranGuruMode : renderKehadiran,
     kedisiplinan: renderKedisiplinan, kebersihan: renderKebersihan,
-    mengajar: renderMengajar, tugas: renderTugas, pengguna: renderPengguna,
+    tugas: renderTugas, pengguna: renderPengguna,
     pencapaian: renderPencapaian, pengaturan: renderPengaturan,
   };
   (renderers[page] || renderDashboard)();
@@ -1278,9 +1278,9 @@ function renderDashboard(){
   const pelanggaranHariIni = DB.kedisiplinan.filter(r=>r.tanggal===today).length;
   const kebersihanHariIni = DB.kebersihan.filter(r=>r.tanggal===today);
   const avgBersih = kebersihanHariIni.length ? Math.round(kebersihanHariIni.reduce((a,b)=>a+b.skor,0)/kebersihanHariIni.length) : null;
-  const mengajarHariIni = DB.mengajar.filter(r=>r.tanggal===today);
-  const mengajarHadir = mengajarHariIni.filter(r=>r.status==='Hadir').length;
-  const pctMengajar = mengajarHariIni.length ? Math.round(mengajarHadir/mengajarHariIni.length*100) : 0;
+  const sesiGuruHariIni = groupKehadiranSesi(DB.kehadiran.filter(r=>r.siswaId && r.tanggal===today));
+  const sesiGuruMengajar = sesiGuruHariIni.filter(r=>r.materi);
+  const pctMengajar = sesiGuruHariIni.length ? Math.round(sesiGuruMengajar.length/sesiGuruHariIni.length*100) : 0;
   const tugasPending = DB.tugas.filter(t=>t.status!=='Selesai').sort((a,b)=>(a.deadline||'').localeCompare(b.deadline||''));
   const siswaPerhatian = computeSiswaPerhatian();
   const topSiswa = computeTopSiswaKehadiran(5);
@@ -1296,7 +1296,7 @@ function renderDashboard(){
       ${statCard(ICONS.kehadiran, kehadiranDetailHariIni.length? pctHadir+'%' : '-', 'Kehadiran Hari Ini', kehadiranDetailHariIni.length? hadirCount+' dari '+kehadiranDetailHariIni.length+' tercatat' : 'Belum ada data', pctHadir>=85?'var(--success)':'var(--warn)')}
       ${!isGuru?statCard(ICONS.disiplin, pelanggaranHariIni, 'Pelanggaran Hari Ini', 'Kedisiplinan siswa', pelanggaranHariIni>0?'var(--danger)':'var(--success)'):''}
       ${!isGuru?statCard(ICONS.bersih, avgBersih!==null? avgBersih+'%':'-', 'Rata-rata Kebersihan', avgBersih!==null? kebersihanHariIni.length+' kelas dinilai':'Belum ada data', 'var(--primary)'):''}
-      ${statCard(ICONS.mengajar, mengajarHariIni.length? pctMengajar+'%':'-', 'Kehadiran Guru Hari Ini', mengajarHariIni.length? mengajarHadir+' dari '+mengajarHariIni.length+' jadwal hadir':'Belum ada data', 'var(--accent)')}
+      ${statCard(ICONS.mengajar, sesiGuruHariIni.length? pctMengajar+'%':'-', 'Kehadiran Guru Hari Ini', sesiGuruHariIni.length? sesiGuruMengajar.length+' dari '+sesiGuruHariIni.length+' sesi ada materi':'Belum ada data', 'var(--accent)')}
       ${!isGuru?statCard(ICONS.warningTriangle, siswaPerhatian.length, 'Siswa Perlu Perhatian', 'Kehadiran / kedisiplinan', siswaPerhatian.length>0?'var(--danger)':'var(--success)'):''}
       ${statCard(ICONS.clipboard, tugasPending.length, 'Tugas Belum Selesai', 'Catatan dari guru', tugasPending.length>0?'var(--warn)':'var(--success)')}
     </div>
@@ -1421,15 +1421,18 @@ function renderDashboard(){
         <div class="p-val">${x.pct===null?'-':x.pct+'%'}</div></div>`).join('');
 
   const guruStatusBlock = document.getElementById('dash-guru-status');
-  if(mengajarHariIni.length===0){
-    guruStatusBlock.innerHTML = emptyState('Belum ada jadwal kehadiran guru yang tercatat hari ini.');
+  if(sesiGuruHariIni.length===0){
+    guruStatusBlock.innerHTML = emptyState('Belum ada sesi kehadiran guru yang tercatat hari ini.');
   }else{
-    const counts = {'Hadir':0, 'Tidak Hadir':0, 'Memberikan Tugas':0};
-    mengajarHariIni.forEach(r=>{ if(counts[r.status]!==undefined) counts[r.status]++; });
-    const colorMap = {'Hadir':'var(--success)', 'Tidak Hadir':'var(--danger)', 'Memberikan Tugas':'var(--warn)'};
-    const total = mengajarHariIni.length;
+    const counts = {'Mengajar':0, 'Tanpa Materi':0, 'Belum Diisi':0};
+    sesiGuruHariIni.forEach(r=>{
+      const key = !r.namaGuru ? 'Belum Diisi' : (r.materi ? 'Mengajar' : 'Tanpa Materi');
+      counts[key]++;
+    });
+    const colorMap = {'Mengajar':'var(--success)', 'Tanpa Materi':'var(--warn)', 'Belum Diisi':'var(--danger)'};
+    const total = sesiGuruHariIni.length;
     guruStatusBlock.innerHTML = `<div class="stacked-bar">${Object.entries(counts).filter(([k,v])=>v>0).map(([k,v])=>`<div style="width:${Math.round(v/total*100)}%; background:${colorMap[k]};" title="${k}: ${v}"></div>`).join('')}</div>
-      <div class="stacked-legend">${Object.entries(counts).map(([k,v])=>`<div class="legend-row"><span class="legend-dot" style="background:${colorMap[k]}"></span><span class="legend-label">${k}</span><span class="legend-val">${v} guru</span></div>`).join('')}</div>`;
+      <div class="stacked-legend">${Object.entries(counts).filter(([k,v])=>v>0).map(([k,v])=>`<div class="legend-row"><span class="legend-dot" style="background:${colorMap[k]}"></span><span class="legend-label">${k}</span><span class="legend-val">${v} sesi</span></div>`).join('')}</div>`;
   }
 
   const bersihKelasBlock = document.getElementById('dash-kebersihan-per-kelas');
@@ -1484,7 +1487,7 @@ function renderDashboard(){
       ...DB.kehadiran.filter(r=>r.siswaId).map(r=>({...r, _type:'Kehadiran', _desc:`Absensi kelas ${r.kelas}`, _icon:ICONS.kehadiran})),
       ...DB.kedisiplinan.map(r=>({...r, _type:'Kedisiplinan', _desc:`${r.namaSiswa} - ${r.jenis}`, _icon:ICONS.disiplin})),
       ...DB.kebersihan.map(r=>({...r, _type:'Kebersihan', _desc:`Kelas ${r.kelas} - skor ${r.skor}%`, _icon:ICONS.bersih})),
-      ...DB.mengajar.map(r=>({...r, _type:'Kehadiran Guru', _desc:`${r.namaGuru} - ${r.mapel} (${r.kelas}) - ${r.status}`, _icon:ICONS.mengajar})),
+      ...groupKehadiranSesi(DB.kehadiran.filter(r=>r.siswaId)).filter(r=>r.namaGuru).map(r=>({...r, _type:'Kehadiran Guru', _desc:`${r.namaGuru} - ${r.mapel} (${r.kelas}) - ${r.materi?'Mengajar':'Tanpa Materi'}`, _icon:ICONS.mengajar})),
     ].sort((a,b)=> (b.tanggal||'').localeCompare(a.tanggal||'') || (b.id||'').localeCompare(a.id||'')).slice(0,8);
     recentBlock.innerHTML = allRecent.length===0 ? emptyState('Belum ada aktivitas yang tercatat.') : `<div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Modul</th><th>Keterangan</th></tr></thead><tbody>
       ${allRecent.map(r=>`<tr><td>${formatDateShort(r.tanggal)}</td><td><span class="pill pill-gray">${r._icon} ${r._type}</span></td><td>${escapeHtml(r._desc)}</td></tr>`).join('')}
@@ -1493,7 +1496,6 @@ function renderDashboard(){
 }
 
 /* ================= DATA SISWA (tab: Data Siswa / Nilai Siswa) ================= */
-let siswaActiveTab = 'data';
 function renderSiswa(){
   const content = document.getElementById('content');
   content.innerHTML = `
@@ -1501,18 +1503,10 @@ function renderSiswa(){
       <div class="card-head">
         <div class="flex items-center gap-8"><span class="card-icon-badge">${ICONS.siswa}</span><div><h3>Data Siswa</h3><div class="card-sub">${DB.siswa.length} siswa terdaftar</div></div></div>
       </div>
-      <div class="subtab-row">
-        <button class="subtab-btn ${siswaActiveTab==='data'?'active':''}" data-tab="data">${ICONS.siswa} Data Siswa</button>
-        <button class="subtab-btn ${siswaActiveTab==='nilai'?'active':''}" data-tab="nilai">${ICONS.star} Nilai Siswa</button>
-      </div>
       <div id="siswa-tab-body"></div>
     </div>
   `;
-  content.querySelectorAll('.subtab-btn').forEach(b=>b.addEventListener('click', ()=>{
-    siswaActiveTab = b.dataset.tab;
-    renderSiswa();
-  }));
-  if(siswaActiveTab==='nilai') renderNilaiTab(); else renderSiswaDataTab();
+  renderSiswaDataTab();
 }
 function renderSiswaDataTab(){
   const body = document.getElementById('siswa-tab-body');
@@ -1598,12 +1592,12 @@ function openSiswaForm(existing){
   });
 }
 
-/* ================= NILAI SISWA (tab di dalam Data Siswa) ================= */
-function renderNilaiTab(){
-  const body = document.getElementById('siswa-tab-body');
+/* ================= NILAI SISWA (menu tersendiri, terpisah dari Data Siswa) ================= */
+function renderNilai(){
+  const content = document.getElementById('content');
   const tahunOpts = tahunAjaranOptions();
   const namesMapel = mapelNames();
-  body.innerHTML = `
+  content.innerHTML = `
     <div class="card" style="margin-bottom:22px; box-shadow:none; border:1px solid var(--border); padding:18px;">
       <div class="card-head"><div class="flex items-center gap-8"><span class="card-icon-badge">${ICONS.siswa}</span><div><h3>Input Nilai per Kelas (Massal)</h3><div class="card-sub">Isi nilai sekelas sekaligus, tidak perlu satu per satu</div></div></div></div>
       <div class="form-grid" style="margin-bottom:16px;">
@@ -2071,39 +2065,85 @@ function renderKehadiran(){
   const content = document.getElementById('content');
   content.innerHTML = `
     <div class="card">
-      <div class="card-head"><div class="flex items-center gap-8"><span class="card-icon-badge">${ICONS.kehadiran}</span><div><h3>Input Kehadiran Siswa</h3><div class="card-sub">Pilih tanggal dan kelas untuk menandai kehadiran per siswa</div></div></div></div>
+      <div class="card-head"><div class="flex items-center gap-8"><span class="card-icon-badge">${ICONS.kehadiran}</span><div><h3>Input Kehadiran Siswa</h3><div class="card-sub">Pilih tanggal, kelas, dan rentang jam pelajaran untuk menandai kehadiran per siswa</div></div></div></div>
       <div class="toolbar">
         <input type="date" class="select-input" id="kh-tanggal" value="${todayStr()}"/>
         <select class="select-input" id="kh-kelas"><option value="">Pilih Kelas</option>${KELAS_LIST.map(k=>`<option value="${k}">${k}</option>`).join('')}</select>
-        <select class="select-input" id="kh-jamke">${JAM_KE_LIST.map(j=>`<option value="${j}">Jam Ke-${j}</option>`).join('')}</select>
+        <select class="select-input" id="kh-jamke-mulai">${JAM_KE_LIST.map(j=>`<option value="${j}">Jam Ke-${j}</option>`).join('')}</select>
+        <span style="align-self:center; color:var(--muted); font-size:13px;">s.d.</span>
+        <select class="select-input" id="kh-jamke-selesai">${JAM_KE_LIST.map(j=>`<option value="${j}">Jam Ke-${j}</option>`).join('')}</select>
       </div>
       <div id="kh-form-area"></div>
     </div>
     <div class="card">
       <div class="card-head">
-        <div class="flex items-center gap-8"><span class="card-icon-badge">${ICONS.clipboard}</span><div><h3>Riwayat Kehadiran</h3><div class="card-sub">${DB.kehadiran.length} catatan tersimpan</div></div></div>
+        <div class="flex items-center gap-8"><span class="card-icon-badge">${ICONS.clipboard}</span><div><h3>Riwayat Kehadiran &amp; Penilaian Guru Mengajar</h3><div class="card-sub">Direkap otomatis dari data kehadiran siswa per sesi jam pelajaran</div></div></div>
         <button class="btn btn-outline btn-sm" id="btn-sync-kehadiran">${ICONS.cloud} Kirim ke Sheet</button>
       </div>
       <div id="kh-history"></div>
     </div>
+    <div class="card">
+      <div class="card-head"><div class="flex items-center gap-8"><span class="card-icon-badge">${ICONS.siswa}</span><div><h3>Tabel Nama Siswa &amp; Rekap Absensi</h3><div class="card-sub">Rekap kehadiran per siswa berdasarkan seluruh catatan yang tersimpan</div></div></div></div>
+      <div class="toolbar">
+        <input class="search-input" id="kh-rekap-search" placeholder="Cari nama atau NIS..."/>
+        <select class="select-input" id="kh-rekap-kelas"><option value="">Semua Kelas</option>${KELAS_LIST.map(k=>`<option value="${k}">${k}</option>`).join('')}</select>
+      </div>
+      <div id="kh-rekap-table"></div>
+    </div>
   `;
   document.getElementById('kh-tanggal').addEventListener('change', drawKehadiranForm);
   document.getElementById('kh-kelas').addEventListener('change', drawKehadiranForm);
-  document.getElementById('kh-jamke').addEventListener('change', drawKehadiranForm);
-  document.getElementById('btn-sync-kehadiran').addEventListener('click', ()=>syncToSheet('Kehadiran Siswa', DB.kehadiran.filter(r=>r.siswaId).map(r=>({Tanggal:r.tanggal, Kelas:r.kelas, 'Jam Ke':r.jamKe||'', Guru:r.namaGuru||'', Mapel:r.mapel||'', Materi:r.materi||'', Nama:r.nama, Status:r.status, Keterangan:r.keterangan||''}))));
+  document.getElementById('kh-jamke-mulai').addEventListener('change', ()=>{
+    const m = Number(document.getElementById('kh-jamke-mulai').value);
+    const s = document.getElementById('kh-jamke-selesai');
+    if(Number(s.value) < m) s.value = String(m);
+    drawKehadiranForm();
+  });
+  document.getElementById('kh-jamke-selesai').addEventListener('change', drawKehadiranForm);
+  document.getElementById('btn-sync-kehadiran').addEventListener('click', ()=>syncToSheet('Kehadiran Siswa', DB.kehadiran.filter(r=>r.siswaId).map(r=>({Tanggal:r.tanggal, Kelas:r.kelas, 'Jam Ke Mulai':r.jamKeMulai||r.jamKe||'', 'Jam Ke Selesai':r.jamKeSelesai||r.jamKe||'', Guru:r.namaGuru||'', Mapel:r.mapel||'', Materi:r.materi||'', Nama:r.nama, Status:r.status, Keterangan:r.keterangan||''}))));
+  document.getElementById('kh-rekap-search').addEventListener('input', drawKehadiranRekapSiswaTable);
+  document.getElementById('kh-rekap-kelas').addEventListener('change', drawKehadiranRekapSiswaTable);
   drawKehadiranForm();
   drawKehadiranHistory();
+  drawKehadiranRekapSiswaTable();
+}
+/* Tabel nama siswa lengkap beserta rekap kehadirannya (Hadir/Sakit/Izin/Alpa/Persentase) */
+function drawKehadiranRekapSiswaTable(){
+  const q = (document.getElementById('kh-rekap-search').value||'').toLowerCase();
+  const kelas = document.getElementById('kh-rekap-kelas').value;
+  const wrap = document.getElementById('kh-rekap-table');
+  const list = DB.siswa.filter(s=> (s.nama.toLowerCase().includes(q) || s.nis.includes(q)) && (!kelas || s.kelas===kelas));
+  if(list.length===0){ wrap.innerHTML = emptyState('Tidak ada data siswa yang cocok.'); return; }
+  const rekap = {};
+  DB.kehadiran.filter(r=>r.siswaId).forEach(r=>{
+    if(!rekap[r.siswaId]) rekap[r.siswaId] = {Hadir:0, Sakit:0, Izin:0, Alpa:0, total:0};
+    if(rekap[r.siswaId][r.status]!==undefined) rekap[r.siswaId][r.status]++;
+    rekap[r.siswaId].total++;
+  });
+  wrap.innerHTML = `<div class="table-wrap"><table><thead><tr><th>NIS</th><th>Nama</th><th>Kelas</th><th>Hadir</th><th>Sakit</th><th>Izin</th><th>Alpa</th><th>Persentase</th></tr></thead><tbody>
+    ${list.map(s=>{
+      const r = rekap[s.id] || {Hadir:0, Sakit:0, Izin:0, Alpa:0, total:0};
+      const pct = r.total ? Math.round(r.Hadir/r.total*100) : null;
+      return `<tr>
+        <td>${escapeHtml(s.nis)}</td><td>${escapeHtml(s.nama)}</td>
+        <td><span class="pill pill-gray">${escapeHtml(s.kelas)}</span></td>
+        <td>${r.Hadir}</td><td>${r.Sakit}</td><td>${r.Izin}</td><td>${r.Alpa}</td>
+        <td>${pct===null?'-':`<span class="pill ${pct>=85?'pill-green':pct>=60?'pill-amber':'pill-red'}">${pct}%</span>`}</td>
+      </tr>`;
+    }).join('')}
+  </tbody></table></div>`;
 }
 function drawKehadiranForm(){
   const tanggal = document.getElementById('kh-tanggal').value;
   const kelas = document.getElementById('kh-kelas').value;
-  const jamKe = Number(document.getElementById('kh-jamke').value)||1;
+  const jamKeMulai = Number(document.getElementById('kh-jamke-mulai').value)||1;
+  const jamKeSelesai = Math.max(jamKeMulai, Number(document.getElementById('kh-jamke-selesai').value)||jamKeMulai);
   const area = document.getElementById('kh-form-area');
   if(!kelas){ area.innerHTML = emptyState('Pilih kelas untuk mulai mengisi absensi.'); return; }
   const siswaKelas = DB.siswa.filter(s=>s.kelas===kelas);
   if(siswaKelas.length===0){ area.innerHTML = emptyState('Belum ada siswa terdaftar di kelas ini.'); return; }
   const existingMap = {};
-  DB.kehadiran.filter(r=>r.siswaId && r.tanggal===tanggal && r.kelas===kelas && Number(r.jamKe||1)===jamKe).forEach(r=> existingMap[r.siswaId] = r);
+  DB.kehadiran.filter(r=>r.siswaId && r.tanggal===tanggal && r.kelas===kelas && Number(r.jamKeMulai||r.jamKe||1)===jamKeMulai && Number(r.jamKeSelesai||r.jamKe||1)===jamKeSelesai).forEach(r=> existingMap[r.siswaId] = r);
   const sessionRec = Object.values(existingMap)[0];
 
   const sessionGuru = sessionRec ? DB.guru.find(g=>g.id===sessionRec.guruId) : null;
@@ -2134,39 +2174,49 @@ function drawKehadiranForm(){
     const mapel = document.getElementById('kh-mapel').value.trim();
     const materi = document.getElementById('kh-materi').value.trim();
     const rows = area.querySelectorAll('.kh-status');
-    const removeIds = DB.kehadiran.filter(r=> r.siswaId && r.tanggal===tanggal && r.kelas===kelas && Number(r.jamKe||1)===jamKe).map(r=>r.id);
+    const removeIds = DB.kehadiran.filter(r=> r.siswaId && r.tanggal===tanggal && r.kelas===kelas && Number(r.jamKeMulai||r.jamKe||1)===jamKeMulai && Number(r.jamKeSelesai||r.jamKe||1)===jamKeSelesai).map(r=>r.id);
     const newRecords = [];
     rows.forEach(sel=>{
       const sid = sel.dataset.sid;
       const siswa = DB.siswa.find(s=>s.id===sid);
       const ket = area.querySelector(`.kh-ket[data-sid="${sid}"]`).value.trim();
       newRecords.push({
-        id:uid(), tanggal, kelas, jamKe, siswaId:sid, nama:siswa.nama, status:sel.value, keterangan:ket,
+        id:uid(), tanggal, kelas, jamKe:jamKeMulai, jamKeMulai, jamKeSelesai, siswaId:sid, nama:siswa.nama, status:sel.value, keterangan:ket,
         guruId: guru?guru.id:null, namaGuru: guru?guru.nama:'', mapel, materi,
       });
     });
     await bulkUpsert('kehadiran', newRecords, removeIds, drawKehadiranHistory);
     if(firebaseReady){ for(const r of newRecords){ await syncSiswaRingkasan(r.siswaId); } }
-    toast('Absensi kelas '+kelas+' jam ke-'+jamKe+' tersimpan', 'success');
+    const jamLabel = jamKeMulai===jamKeSelesai ? ('jam ke-'+jamKeMulai) : ('jam ke-'+jamKeMulai+' s.d. '+jamKeSelesai);
+    toast('Absensi kelas '+kelas+' '+jamLabel+' tersimpan', 'success');
     if(!firebaseReady) drawKehadiranHistory();
   });
 }
-function drawKehadiranHistory(){
-  const wrap = document.getElementById('kh-history');
+/* Mengelompokkan catatan kehadiran siswa menjadi sesi mengajar (tanggal+kelas+rentang jam+guru),
+   dipakai sebagai riwayat kehadiran sekaligus penilaian kehadiran guru mengajar di kelas. */
+function groupKehadiranSesi(list){
   const grouped = {};
-  DB.kehadiran.filter(r=>r.siswaId).forEach(r=>{
-    const jk = Number(r.jamKe||1);
-    const key = r.tanggal+'|'+r.kelas+'|'+jk;
-    if(!grouped[key]) grouped[key] = {tanggal:r.tanggal, kelas:r.kelas, jamKe:jk, namaGuru:r.namaGuru||'', mapel:r.mapel||'', materi:r.materi||'', hadir:0, total:0};
+  list.forEach(r=>{
+    const jkm = Number(r.jamKeMulai||r.jamKe||1);
+    const jks = Number(r.jamKeSelesai||r.jamKe||1);
+    const key = r.tanggal+'|'+r.kelas+'|'+jkm+'|'+jks;
+    if(!grouped[key]) grouped[key] = {tanggal:r.tanggal, kelas:r.kelas, jamKeMulai:jkm, jamKeSelesai:jks, namaGuru:r.namaGuru||'', mapel:r.mapel||'', materi:r.materi||'', hadir:0, total:0};
     grouped[key].total++;
     if(r.status==='Hadir') grouped[key].hadir++;
   });
-  const rows = Object.values(grouped).sort((a,b)=> b.tanggal.localeCompare(a.tanggal) || b.jamKe-a.jamKe);
+  return Object.values(grouped);
+}
+function drawKehadiranHistory(){
+  const wrap = document.getElementById('kh-history');
+  const rows = groupKehadiranSesi(DB.kehadiran.filter(r=>r.siswaId))
+    .sort((a,b)=> b.tanggal.localeCompare(a.tanggal) || b.jamKeMulai-a.jamKeMulai);
   if(rows.length===0){ wrap.innerHTML = emptyState('Belum ada riwayat kehadiran.'); return; }
-  wrap.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Kelas</th><th>Jam Ke</th><th>Guru</th><th>Mapel</th><th>Materi</th><th>Hadir</th><th>Persentase</th></tr></thead><tbody>
+  wrap.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Kelas</th><th>Jam Ke</th><th>Guru</th><th>Mapel</th><th>Materi</th><th>Hadir</th><th>Persentase</th><th>Status Guru</th></tr></thead><tbody>
     ${rows.map(r=>{
       const pct = Math.round(r.hadir/r.total*100);
-      return `<tr><td>${formatDateShort(r.tanggal)}</td><td><span class="pill pill-gray">${r.kelas}</span></td><td>Ke-${r.jamKe}</td><td>${escapeHtml(r.namaGuru||'-')}</td><td>${escapeHtml(r.mapel||'-')}</td><td>${escapeHtml(r.materi||'-')}</td><td>${r.hadir}/${r.total}</td><td><span class="pill ${pct>=85?'pill-green':pct>=60?'pill-amber':'pill-red'}">${pct}%</span></td></tr>`;
+      const jamLabel = r.jamKeMulai===r.jamKeSelesai ? ('Ke-'+r.jamKeMulai) : ('Ke-'+r.jamKeMulai+' s.d. '+r.jamKeSelesai);
+      const guruStatus = !r.namaGuru ? {label:'Belum Diisi', cls:'pill-gray'} : (r.materi ? {label:'Mengajar', cls:'pill-green'} : {label:'Tanpa Materi', cls:'pill-amber'});
+      return `<tr><td>${formatDateShort(r.tanggal)}</td><td><span class="pill pill-gray">${r.kelas}</span></td><td>${jamLabel}</td><td>${escapeHtml(r.namaGuru||'-')}</td><td>${escapeHtml(r.mapel||'-')}</td><td>${escapeHtml(r.materi||'-')}</td><td>${r.hadir}/${r.total}</td><td><span class="pill ${pct>=85?'pill-green':pct>=60?'pill-amber':'pill-red'}">${pct}%</span></td><td><span class="pill ${guruStatus.cls}">${guruStatus.label}</span></td></tr>`;
     }).join('')}
   </tbody></table></div>`;
 }
@@ -2427,96 +2477,6 @@ function openBersihForm(){
   });
 }
 
-/* ================= KEHADIRAN GURU (mengajar) ================= */
-function renderMengajar(){
-  const content = document.getElementById('content');
-  content.innerHTML = `
-    <div class="card">
-      <div class="card-head">
-        <div class="flex items-center gap-8"><span class="card-icon-badge">${ICONS.mengajar}</span><div><h3>Kehadiran Guru Mengajar</h3><div class="card-sub">Catat kehadiran guru di kelas beserta jam masuk dan keluar</div></div></div>
-        <div class="flex gap-8">
-          <button class="btn btn-outline btn-sm" id="btn-sync-mengajar">${ICONS.cloud} Kirim ke Sheet</button>
-          <button class="btn btn-primary btn-sm" id="btn-add-mengajar">${ICONS.plus} Catat Kehadiran</button>
-        </div>
-      </div>
-      <div id="mengajar-table"></div>
-    </div>
-  `;
-  document.getElementById('btn-add-mengajar').addEventListener('click', openMengajarForm);
-  document.getElementById('btn-sync-mengajar').addEventListener('click', ()=>syncToSheet('Kehadiran Guru', DB.mengajar.map(r=>({Tanggal:r.tanggal, Guru:r.namaGuru, Kelas:r.kelas, Mapel:r.mapel, 'Jam Ke':r.jamKe, 'Jam Mulai':r.jamMulai||'', 'Jam Selesai':r.jamSelesai||'', Status:r.status, 'Materi/Tugas':r.materi||'', Keterangan:r.catatan||''}))));
-  drawMengajarTable();
-}
-function drawMengajarTable(){
-  const wrap = document.getElementById('mengajar-table');
-  const rows = [...DB.mengajar].sort((a,b)=>b.tanggal.localeCompare(a.tanggal));
-  if(rows.length===0){ wrap.innerHTML = emptyState('Belum ada catatan kehadiran guru.'); return; }
-  wrap.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Guru</th><th>Kelas</th><th>Mapel</th><th>Jam Ke</th><th>Jam</th><th>Status</th><th></th></tr></thead><tbody>
-    ${rows.map(r=>{
-      const pillClass = r.status==='Hadir'?'pill-green':r.status==='Memberikan Tugas'?'pill-amber':'pill-red';
-      const pillIcon = r.status==='Hadir'?ICONS.checkCircle:r.status==='Memberikan Tugas'?ICONS.clipboard:ICONS.close;
-      const jamRange = (r.jamMulai||r.jamSelesai) ? `${r.jamMulai||'-'} &ndash; ${r.jamSelesai||'-'}` : '-';
-      return `<tr>
-        <td>${formatDateShort(r.tanggal)}</td><td>${escapeHtml(r.namaGuru)}</td>
-        <td><span class="pill pill-gray">${escapeHtml(r.kelas)}</span></td><td>${escapeHtml(r.mapel)}</td>
-        <td>Ke-${r.jamKe}</td><td>${jamRange}</td>
-        <td><span class="pill ${pillClass}">${pillIcon} ${r.status}</span></td>
-        <td><div class="row-actions"><button class="btn-icon btn-del-mengajar" data-id="${r.id}">${ICONS.trash}</button></div></td>
-      </tr>`;
-    }).join('')}
-  </tbody></table></div>`;
-  wrap.querySelectorAll('.btn-del-mengajar').forEach(b=>b.addEventListener('click', async ()=>{
-    if(confirm('Hapus catatan ini?')){
-      await removeRecord('mengajar', b.dataset.id, drawMengajarTable);
-      if(!firebaseReady) drawMengajarTable();
-      toast('Catatan dihapus', 'success');
-    }
-  }));
-}
-function openMengajarForm(){
-  openModal(`
-    <div class="modal-head"><h3>Catat Kehadiran Guru Mengajar</h3><button class="btn-icon" onclick="closeModal()">${ICONS.close}</button></div>
-    <form id="mengajar-form">
-      <div class="modal-body"><div class="form-grid">
-        <div class="field"><label>Tanggal</label><input type="date" required id="f-tanggal" value="${todayStr()}"/></div>
-        <div class="field"><label>Jam Pelajaran Ke-</label><input type="number" required id="f-jam" min="1" max="10" value="1"/></div>
-        <div class="field full"><label>Nama Guru</label><select required id="f-guru">${DB.guru.map(g=>`<option value="${g.id}">${escapeHtml(g.nama)} — ${escapeHtml(guruMapelDisplay(g))}</option>`).join('') || '<option value="">Belum ada data guru</option>'}</select></div>
-        <div class="field"><label>Mata Pelajaran</label><select required id="f-mapel-mengajar">${DB.guru[0] ? guruMapelArr(DB.guru[0]).map(m=>`<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('') : '<option value="">-</option>'}</select></div>
-        <div class="field"><label>Kelas</label><select required id="f-kelas">${KELAS_LIST.map(k=>`<option value="${k}">${k}</option>`).join('')}</select></div>
-        <div class="field"><label>Status Kehadiran</label><select required id="f-status">${STATUS_MENGAJAR.map(s=>`<option value="${s}">${s}</option>`).join('')}</select></div>
-        <div class="field"><label>Jam Mulai</label><input type="time" id="f-jam-mulai"/></div>
-        <div class="field"><label>Jam Selesai</label><input type="time" id="f-jam-selesai"/></div>
-        <div class="field full"><label>Materi / Tugas yang Diberikan</label><input id="f-materi" placeholder="Contoh: Persamaan Kuadrat, atau tugas yang dititipkan"/></div>
-        <div class="field full"><label>Keterangan</label><textarea id="f-catatan" rows="2" placeholder="Keterangan tambahan (opsional)"></textarea></div>
-      </div></div>
-      <div class="modal-foot">
-        <button type="button" class="btn btn-outline" onclick="closeModal()">Batal</button>
-        <button type="submit" class="btn btn-primary">Simpan</button>
-      </div>
-    </form>
-  `);
-  document.getElementById('f-guru').addEventListener('change', e=>{
-    const guru = DB.guru.find(g=>g.id===e.target.value);
-    const arr = guruMapelArr(guru);
-    document.getElementById('f-mapel-mengajar').innerHTML = arr.length ? arr.map(m=>`<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('') : '<option value="">-</option>';
-  });
-  document.getElementById('mengajar-form').addEventListener('submit', async function(e){
-    e.preventDefault();
-    const guruSel = document.getElementById('f-guru');
-    const guru = DB.guru.find(g=>g.id===guruSel.value);
-    if(!guru){ toast('Data guru tidak tersedia. Tambahkan data guru terlebih dahulu.', 'error'); return; }
-    const data = {
-      id:uid(), tanggal: document.getElementById('f-tanggal').value, jamKe: Number(document.getElementById('f-jam').value),
-      jamMulai: document.getElementById('f-jam-mulai').value, jamSelesai: document.getElementById('f-jam-selesai').value,
-      guruId: guru.id, namaGuru: guru.nama, mapel: document.getElementById('f-mapel-mengajar').value.trim(), kelas: document.getElementById('f-kelas').value,
-      status: document.getElementById('f-status').value, materi: document.getElementById('f-materi').value.trim(),
-      catatan: document.getElementById('f-catatan').value.trim(),
-    };
-    await upsertRecord('mengajar', data, false, drawMengajarTable);
-    closeModal();
-    if(!firebaseReady) drawMengajarTable();
-    toast('Kehadiran guru tercatat', 'success');
-  });
-}
 
 /* ================= CATATAN TUGAS ================= */
 function renderTugas(){
