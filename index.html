@@ -894,6 +894,10 @@ function formatDateLong(d){
 function formatDateShort(d){
   try{ return new Date(d+'T00:00:00').toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'}); }catch(e){ return d; }
 }
+function formatWaktu(iso){
+  if(!iso) return '-';
+  try{ return new Date(iso).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false}); }catch(e){ return '-'; }
+}
 function escapeHtml(str){
   if(str===undefined||str===null) return '';
   return String(str).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -2100,7 +2104,7 @@ function renderKehadiran(){
     drawKehadiranForm();
   });
   document.getElementById('kh-jamke-selesai').addEventListener('change', drawKehadiranForm);
-  document.getElementById('btn-sync-kehadiran').addEventListener('click', ()=>syncToSheet('Kehadiran Siswa', DB.kehadiran.filter(r=>r.siswaId).map(r=>({Tanggal:r.tanggal, Kelas:r.kelas, 'Jam Ke Mulai':r.jamKeMulai||r.jamKe||'', 'Jam Ke Selesai':r.jamKeSelesai||r.jamKe||'', Guru:r.namaGuru||'', Mapel:r.mapel||'', Materi:r.materi||'', Nama:r.nama, Status:r.status, Keterangan:r.keterangan||''}))));
+  document.getElementById('btn-sync-kehadiran').addEventListener('click', ()=>syncToSheet('Kehadiran Siswa', DB.kehadiran.filter(r=>r.siswaId).map(r=>({Tanggal:r.tanggal, Kelas:r.kelas, 'Jam Ke Mulai':r.jamKeMulai||r.jamKe||'', 'Jam Ke Selesai':r.jamKeSelesai||r.jamKe||'', Guru:r.namaGuru||'', Mapel:r.mapel||'', Materi:r.materi||'', Nama:r.nama, Status:r.status, Keterangan:r.keterangan||'', 'Waktu Input':r.waktuInput?new Date(r.waktuInput).toLocaleString('id-ID'):''}))));
   document.getElementById('kh-rekap-search').addEventListener('input', drawKehadiranRekapSiswaTable);
   document.getElementById('kh-rekap-kelas').addEventListener('change', drawKehadiranRekapSiswaTable);
   drawKehadiranForm();
@@ -2153,14 +2157,16 @@ function drawKehadiranForm(){
     <div class="field"><label>Mata Pelajaran</label><select id="kh-mapel">${sessionGuru ? guruMapelArr(sessionGuru).map(m=>`<option value="${escapeHtml(m)}" ${m===sessionRec.mapel?'selected':''}>${escapeHtml(m)}</option>`).join('') : '<option value="">- Pilih guru terlebih dahulu -</option>'}</select></div>
     <div class="field full"><label>Materi yang Diajarkan</label><input id="kh-materi" placeholder="Contoh: Persamaan Kuadrat" value="${sessionRec?escapeHtml(sessionRec.materi||''):''}"/></div>
   </div>
-  <div class="table-wrap"><table><thead><tr><th>Nama</th><th>Status</th><th>Keterangan</th></tr></thead><tbody>
+  <div class="table-wrap"><table><thead><tr><th>Nama</th><th>Status</th><th>Keterangan</th><th>Diisi Pada</th></tr></thead><tbody>
     ${siswaKelas.map(s=>{
       const ex = existingMap[s.id];
       return `<tr><td>${escapeHtml(s.nama)}</td>
         <td><select class="select-input kh-status" data-sid="${s.id}">${['Hadir','Sakit','Izin','Alpa'].map(st=>`<option value="${st}" ${ex&&ex.status===st?'selected':''}>${st}</option>`).join('')}</select></td>
-        <td><input class="search-input kh-ket" data-sid="${s.id}" placeholder="Keterangan (opsional)" value="${ex?escapeHtml(ex.keterangan||''):''}"/></td></tr>`;
+        <td><input class="search-input kh-ket" data-sid="${s.id}" placeholder="Keterangan (opsional)" value="${ex?escapeHtml(ex.keterangan||''):''}"/></td>
+        <td class="kh-waktu-cell" style="color:var(--muted); font-size:12px; white-space:nowrap;">${ex&&ex.waktuInput ? (formatDateShort(ex.tanggal)+' '+formatWaktu(ex.waktuInput)) : '<em>Belum disimpan</em>'}</td></tr>`;
     }).join('')}
   </tbody></table></div>
+  <div class="card-sub" style="margin-top:8px;">Waktu pengisian dicatat otomatis oleh sistem sesuai jam saat data disimpan, dan tidak dapat diubah secara manual.</div>
   <div style="margin-top:16px; text-align:right;"><button class="btn btn-primary" id="btn-save-kehadiran">Simpan Absensi</button></div>`;
 
   document.getElementById('kh-guru').addEventListener('change', e=>{
@@ -2175,6 +2181,7 @@ function drawKehadiranForm(){
     const materi = document.getElementById('kh-materi').value.trim();
     const rows = area.querySelectorAll('.kh-status');
     const removeIds = DB.kehadiran.filter(r=> r.siswaId && r.tanggal===tanggal && r.kelas===kelas && Number(r.jamKeMulai||r.jamKe||1)===jamKeMulai && Number(r.jamKeSelesai||r.jamKe||1)===jamKeSelesai).map(r=>r.id);
+    const waktuInput = new Date().toISOString(); // dicatat otomatis dari jam sistem saat tombol simpan ditekan, tidak bisa diubah pengguna
     const newRecords = [];
     rows.forEach(sel=>{
       const sid = sel.dataset.sid;
@@ -2182,13 +2189,14 @@ function drawKehadiranForm(){
       const ket = area.querySelector(`.kh-ket[data-sid="${sid}"]`).value.trim();
       newRecords.push({
         id:uid(), tanggal, kelas, jamKe:jamKeMulai, jamKeMulai, jamKeSelesai, siswaId:sid, nama:siswa.nama, status:sel.value, keterangan:ket,
-        guruId: guru?guru.id:null, namaGuru: guru?guru.nama:'', mapel, materi,
+        guruId: guru?guru.id:null, namaGuru: guru?guru.nama:'', mapel, materi, waktuInput,
       });
     });
     await bulkUpsert('kehadiran', newRecords, removeIds, drawKehadiranHistory);
     if(firebaseReady){ for(const r of newRecords){ await syncSiswaRingkasan(r.siswaId); } }
     const jamLabel = jamKeMulai===jamKeSelesai ? ('jam ke-'+jamKeMulai) : ('jam ke-'+jamKeMulai+' s.d. '+jamKeSelesai);
-    toast('Absensi kelas '+kelas+' '+jamLabel+' tersimpan', 'success');
+    toast('Absensi kelas '+kelas+' '+jamLabel+' tersimpan pukul '+formatWaktu(waktuInput), 'success');
+    drawKehadiranForm();
     if(!firebaseReady) drawKehadiranHistory();
   });
 }
@@ -2200,9 +2208,10 @@ function groupKehadiranSesi(list){
     const jkm = Number(r.jamKeMulai||r.jamKe||1);
     const jks = Number(r.jamKeSelesai||r.jamKe||1);
     const key = r.tanggal+'|'+r.kelas+'|'+jkm+'|'+jks;
-    if(!grouped[key]) grouped[key] = {tanggal:r.tanggal, kelas:r.kelas, jamKeMulai:jkm, jamKeSelesai:jks, namaGuru:r.namaGuru||'', mapel:r.mapel||'', materi:r.materi||'', hadir:0, total:0};
+    if(!grouped[key]) grouped[key] = {tanggal:r.tanggal, kelas:r.kelas, jamKeMulai:jkm, jamKeSelesai:jks, namaGuru:r.namaGuru||'', mapel:r.mapel||'', materi:r.materi||'', hadir:0, total:0, waktuInput:r.waktuInput||null};
     grouped[key].total++;
     if(r.status==='Hadir') grouped[key].hadir++;
+    if(r.waktuInput && (!grouped[key].waktuInput || r.waktuInput > grouped[key].waktuInput)) grouped[key].waktuInput = r.waktuInput;
   });
   return Object.values(grouped);
 }
@@ -2211,12 +2220,12 @@ function drawKehadiranHistory(){
   const rows = groupKehadiranSesi(DB.kehadiran.filter(r=>r.siswaId))
     .sort((a,b)=> b.tanggal.localeCompare(a.tanggal) || b.jamKeMulai-a.jamKeMulai);
   if(rows.length===0){ wrap.innerHTML = emptyState('Belum ada riwayat kehadiran.'); return; }
-  wrap.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Kelas</th><th>Jam Ke</th><th>Guru</th><th>Mapel</th><th>Materi</th><th>Hadir</th><th>Persentase</th><th>Status Guru</th></tr></thead><tbody>
+  wrap.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Kelas</th><th>Jam Ke</th><th>Guru</th><th>Mapel</th><th>Materi</th><th>Hadir</th><th>Persentase</th><th>Status Guru</th><th>Diisi Pada</th></tr></thead><tbody>
     ${rows.map(r=>{
       const pct = Math.round(r.hadir/r.total*100);
       const jamLabel = r.jamKeMulai===r.jamKeSelesai ? ('Ke-'+r.jamKeMulai) : ('Ke-'+r.jamKeMulai+' s.d. '+r.jamKeSelesai);
       const guruStatus = !r.namaGuru ? {label:'Belum Diisi', cls:'pill-gray'} : (r.materi ? {label:'Mengajar', cls:'pill-green'} : {label:'Tanpa Materi', cls:'pill-amber'});
-      return `<tr><td>${formatDateShort(r.tanggal)}</td><td><span class="pill pill-gray">${r.kelas}</span></td><td>${jamLabel}</td><td>${escapeHtml(r.namaGuru||'-')}</td><td>${escapeHtml(r.mapel||'-')}</td><td>${escapeHtml(r.materi||'-')}</td><td>${r.hadir}/${r.total}</td><td><span class="pill ${pct>=85?'pill-green':pct>=60?'pill-amber':'pill-red'}">${pct}%</span></td><td><span class="pill ${guruStatus.cls}">${guruStatus.label}</span></td></tr>`;
+      return `<tr><td>${formatDateShort(r.tanggal)}</td><td><span class="pill pill-gray">${r.kelas}</span></td><td>${jamLabel}</td><td>${escapeHtml(r.namaGuru||'-')}</td><td>${escapeHtml(r.mapel||'-')}</td><td>${escapeHtml(r.materi||'-')}</td><td>${r.hadir}/${r.total}</td><td><span class="pill ${pct>=85?'pill-green':pct>=60?'pill-amber':'pill-red'}">${pct}%</span></td><td><span class="pill ${guruStatus.cls}">${guruStatus.label}</span></td><td style="color:var(--muted); font-size:12px; white-space:nowrap;">${formatWaktu(r.waktuInput)}</td></tr>`;
     }).join('')}
   </tbody></table></div>`;
 }
