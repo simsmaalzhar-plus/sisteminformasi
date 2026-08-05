@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
-<meta name="app-version" content="20260805-1" />
+<meta name="app-version" content="20260805-2" />
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap');
 
@@ -1200,7 +1200,7 @@ function navigate(page){
   content.innerHTML = '';
   const renderers = {
     dashboard: renderDashboard, siswa: renderSiswa, nilai: renderNilai, guru: renderGuru,
-    kehadiran: currentUser.role==='guru' ? renderKehadiranGuruMode : renderKehadiran,
+    kehadiran: renderKehadiran,
     kedisiplinan: renderKedisiplinan, kebersihan: renderKebersihan,
     tugas: renderTugas, pengguna: renderPengguna,
     pencapaian: renderPencapaian, pengaturan: renderPengaturan,
@@ -1357,7 +1357,7 @@ function renderDashboard(){
   const topSiswa = computeTopSiswaKehadiran(5);
   const trend = computeAttendanceTrend(10);
   const distribusi = computePelanggaranDistribution();
-  const isGuru = currentUser.role==='guru';
+  const isGuru = false; // dashboard disamakan dengan admin: guru melihat semua kartu & section yang sama
   const topNilaiSiswa = computeRataNilaiSiswa({kelas:'', mapel:'', semester:'', tahun:''})[0] || null;
 
   const content = document.getElementById('content');
