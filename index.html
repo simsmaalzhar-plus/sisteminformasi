@@ -846,6 +846,35 @@ function attachFirebaseListeners(){
   const collections = ['siswa','guru','kehadiran','kedisiplinan','kebersihan','mengajar','tugas','nilai','mapel'];
   const erroredCols = new Set();
   let mapelSeedTried = false;
+
+  /* Sinkronkan Pengaturan (nama sekolah, tema, URL Google Sheet) lewat Firebase
+     supaya perubahan di 1 perangkat langsung berlaku di semua perangkat lain.
+     firebaseConfig TIDAK disinkron (tetap lokal per-perangkat) karena dibutuhkan
+     SEBELUM koneksi online terbentuk (masalah ayam-telur). */
+  const settingsRef = firebaseDB.ref('data/appsettings');
+  let settingsSeeded = false;
+  const settingsFn = settingsRef.on('value', snap=>{
+    const val = snap.val();
+    if(val === null){
+      // Belum ada data settings online sama sekali -> unggah settings lokal saat ini sebagai nilai awal
+      if(!settingsSeeded){
+        settingsSeeded = true;
+        settingsRef.set({schoolName:DB.settings.schoolName, theme:DB.settings.theme, sheetUrl:DB.settings.sheetUrl||''}).catch(()=>{});
+      }
+      return;
+    }
+    DB.settings.schoolName = val.schoolName || DB.settings.schoolName;
+    DB.settings.theme = val.theme || DB.settings.theme;
+    DB.settings.sheetUrl = (val.sheetUrl!==undefined && val.sheetUrl!==null) ? val.sheetUrl : DB.settings.sheetUrl;
+    storageSet('app-settings', DB.settings);
+    applyTheme(DB.settings.theme || DEFAULT_THEME);
+    updateSchoolNameUI();
+    if(currentPage==='pengaturan' && document.getElementById('app-shell').classList.contains('active')) renderPengaturan();
+  }, err=>{
+    console.error('Gagal membaca pengaturan dari Firebase:', err);
+  });
+  fbListeners.push({ref:settingsRef, fn:settingsFn});
+
   collections.forEach(col=>{
     const ref = firebaseDB.ref('data/'+col);
     const fn = ref.on('value', snap=>{
@@ -881,6 +910,20 @@ function onCollectionUpdated(col){
   };
   if(affects[col] && affects[col].includes(currentPage) && document.getElementById('app-shell').classList.contains('active')){
     navigate(currentPage);
+  }
+}
+
+/* Kirim Pengaturan (nama sekolah, tema, URL Sheet) ke Firebase agar tersinkron ke semua perangkat.
+   Dipanggil setelah setiap perubahan disimpan lokal, hanya jika sedang online. */
+async function pushSettingsToFirebase(){
+  if(!firebaseReady || !firebaseDB) return;
+  try{
+    await firebaseDB.ref('data/appsettings').set({
+      schoolName: DB.settings.schoolName, theme: DB.settings.theme, sheetUrl: DB.settings.sheetUrl||'',
+    });
+  }catch(err){
+    console.error('Gagal menyinkronkan pengaturan ke Firebase:', err);
+    toast('Pengaturan tersimpan lokal, tapi gagal disinkron ke perangkat lain: '+(err&&err.message?err.message:'periksa Security Rules Firebase Anda'), 'error');
   }
 }
 
@@ -2987,6 +3030,7 @@ function renderPengaturan(){
   document.getElementById('btn-save-school').addEventListener('click', async ()=>{
     DB.settings.schoolName = document.getElementById('set-school-name').value.trim() || 'SMA Al Azhar Plus Kota Bogor';
     await storageSet('app-settings', DB.settings);
+    await pushSettingsToFirebase();
     updateSchoolNameUI();
     toast('Nama sekolah disimpan', 'success');
   });
@@ -2997,12 +3041,14 @@ function renderPengaturan(){
       accent: document.getElementById('col-accent').value, bg: document.getElementById('col-bg').value,
     };
     await storageSet('app-settings', DB.settings);
+    await pushSettingsToFirebase();
     applyTheme(DB.settings.theme);
     toast('Tema warna disimpan', 'success');
   });
   document.getElementById('btn-reset-theme').addEventListener('click', async ()=>{
     DB.settings.theme = {...DEFAULT_THEME};
     await storageSet('app-settings', DB.settings);
+    await pushSettingsToFirebase();
     applyTheme(DB.settings.theme);
     renderPengaturan();
     toast('Tema dikembalikan ke default', 'success');
@@ -3012,6 +3058,7 @@ function renderPengaturan(){
       const t = THEME_PRESETS[el.dataset.idx];
       DB.settings.theme = {...t};
       await storageSet('app-settings', DB.settings);
+      await pushSettingsToFirebase();
       applyTheme(t);
       renderPengaturan();
       toast('Preset tema diterapkan', 'success');
@@ -3060,6 +3107,7 @@ function renderPengaturan(){
   document.getElementById('btn-save-sheeturl').addEventListener('click', async ()=>{
     DB.settings.sheetUrl = document.getElementById('set-sheet-url').value.trim();
     await storageSet('app-settings', DB.settings);
+    await pushSettingsToFirebase();
     toast('URL Google Sheet disimpan', 'success');
   });
 
@@ -3090,7 +3138,8 @@ function renderPengaturan(){
           storageSet('kehadiran-records', DB.kehadiran), storageSet('kedisiplinan-records', DB.kedisiplinan),
           storageSet('kebersihan-records', DB.kebersihan), storageSet('mengajar-records', DB.mengajar),
           storageSet('tugas-records', DB.tugas), storageSet('nilai-records', DB.nilai), storageSet('mapel-list', DB.mapel), storageSet('app-settings', DB.settings),
-        ]).then(()=>{
+        ]).then(async ()=>{
+          if(firebaseReady) await pushSettingsToFirebase();
           applyTheme(DB.settings.theme || DEFAULT_THEME);
           toast('Data berhasil diimpor', 'success');
           renderPengaturan();
