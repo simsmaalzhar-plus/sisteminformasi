@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SIM Monitoring - SMA Al Azhar Plus Kota Bogor</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+<meta name="app-version" content="20260805-1" />
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap');
 
@@ -3232,6 +3236,26 @@ async function syncToSheet(sheetName, rows){
 
 boot();
 
+/* ---------------- Auto Update Checker ---------------- */
+/* Mengecek versi terbaru langsung dari server (bypass cache browser & CDN),
+   lalu memaksa reload otomatis jika ada versi baru. */
+(function checkForUpdate(){
+  try{
+    var CURRENT_VERSION = document.querySelector('meta[name="app-version"]').getAttribute('content');
+    var url = window.location.pathname + '?_cb=' + Date.now();
+    fetch(url, { cache: 'no-store' })
+      .then(function(r){ return r.text(); })
+      .then(function(html){
+        var m = html.match(/<meta name="app-version" content="([^"]+)"/);
+        if(m && m[1] && m[1] !== CURRENT_VERSION){
+          var target = window.location.pathname + window.location.search +
+            (window.location.search ? '&' : '?') + 'v=' + Date.now();
+          window.location.replace(target);
+        }
+      })
+      .catch(function(){ /* diam saja jika gagal cek, tidak mengganggu pengguna */ });
+  }catch(e){}
+})();
 </script>
 </body>
 </html>
