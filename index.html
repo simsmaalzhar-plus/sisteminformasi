@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
-<meta name="app-version" content="20260805-2" />
+<meta name="app-version" content="20260806-1" />
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap');
 
@@ -616,6 +616,7 @@ const ICONS = {
   wifi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>',
   wifiOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.58 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>',
   medal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="15" r="6"/><path d="M9 10.5 6 2h4l2 4.5L14 2h4l-3 8.5"/></svg>',
+  fasilitas: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',
 };
 
 /* ---------------- Konstanta ---------------- */
@@ -625,6 +626,8 @@ const PRIORITAS_LIST = ['Tinggi','Sedang','Biasa'];
 const STATUS_MENGAJAR = ['Hadir','Tidak Hadir','Memberikan Tugas'];
 const JAM_KE_LIST = [1,2,3,4,5,6,7,8,9,10];
 const KEBERSIHAN_ITEMS = ['Lantai bersih & tidak berdebu','Meja dan kursi tersusun rapi','Papan tulis bersih','Tidak ada sampah berserakan','Tempat sampah tidak penuh','Dinding & jendela bersih'];
+/* Daftar fasilitas sekolah yang bisa dipinjam/dipakai guru untuk mengajar */
+const FASILITAS_LIST = ['Laptop','Ruang Lab','Infokus (Proyektor)','Layar IFP (Papan Tulis Pintar)'];
 
 /* Daftar bawaan mata pelajaran umum jenjang SMA — hanya dipakai untuk mengisi data awal (seed).
    Sesudah itu daftar mata pelajaran dikelola secara dinamis lewat DB.mapel (menu Data Guru > Mata Pelajaran). */
@@ -690,6 +693,7 @@ const NAV_BY_ROLE = {
     {key:'kehadiran', label:'Kehadiran', icon:ICONS.kehadiran},
     {key:'kedisiplinan', label:'Kedisiplinan', icon:ICONS.disiplin},
     {key:'kebersihan', label:'Kebersihan Kelas', icon:ICONS.bersih},
+    {key:'fasilitas', label:'Penggunaan Fasilitas', icon:ICONS.fasilitas},
     {key:'tugas', label:'Catatan Tugas', icon:ICONS.clipboard},
     {key:'pengguna', label:'Kelola Pengguna', icon:ICONS.users},
     {key:'pengaturan', label:'Pengaturan', icon:ICONS.settings},
@@ -697,6 +701,7 @@ const NAV_BY_ROLE = {
   guru: [
     {key:'dashboard', label:'Dashboard', icon:ICONS.dashboard},
     {key:'kehadiran', label:'Input Kehadiran', icon:ICONS.kehadiran},
+    {key:'fasilitas', label:'Penggunaan Fasilitas', icon:ICONS.fasilitas},
     {key:'tugas', label:'Catatan Tugas', icon:ICONS.clipboard},
   ],
   siswa: [
@@ -713,6 +718,7 @@ const ALL_NAV_ITEMS = [
   {key:'kehadiran', label:'Kehadiran', icon:ICONS.kehadiran},
   {key:'kedisiplinan', label:'Kedisiplinan', icon:ICONS.disiplin},
   {key:'kebersihan', label:'Kebersihan Kelas', icon:ICONS.bersih},
+  {key:'fasilitas', label:'Penggunaan Fasilitas', icon:ICONS.fasilitas},
   {key:'tugas', label:'Catatan Tugas', icon:ICONS.clipboard},
   {key:'pengguna', label:'Kelola Pengguna', icon:ICONS.users},
   {key:'pencapaian', label:'Pencapaian Saya', icon:ICONS.dashboard},
@@ -728,7 +734,7 @@ function getNavForUser(user){
 }
 
 /* ---------------- State global ---------------- */
-let DB = { siswa:[], guru:[], kehadiran:[], kedisiplinan:[], kebersihan:[], mengajar:[], tugas:[], nilai:[], mapel:[], users:{}, settings:null };
+let DB = { siswa:[], guru:[], kehadiran:[], kedisiplinan:[], kebersihan:[], fasilitas:[], mengajar:[], tugas:[], nilai:[], mapel:[], users:{}, settings:null };
 let currentUser = null;   // {uid, name, role, email, siswaId?, guruId?}
 let currentPage = 'dashboard';
 let firebaseApp = null, firebaseAuth = null, firebaseDB = null, firebaseReady = false;
@@ -767,7 +773,7 @@ async function storageSet(key, value){
 
 const LOCAL_KEY = {
   siswa:'siswa-list', guru:'guru-list', kehadiran:'kehadiran-records',
-  kedisiplinan:'kedisiplinan-records', kebersihan:'kebersihan-records',
+  kedisiplinan:'kedisiplinan-records', kebersihan:'kebersihan-records', fasilitas:'fasilitas-records',
   mengajar:'mengajar-records', tugas:'tugas-records', nilai:'nilai-records', mapel:'mapel-list',
 };
 
@@ -847,7 +853,7 @@ function detachFirebaseListeners(){
   fbListeners = [];
 }
 function attachFirebaseListeners(){
-  const collections = ['siswa','guru','kehadiran','kedisiplinan','kebersihan','mengajar','tugas','nilai','mapel'];
+  const collections = ['siswa','guru','kehadiran','kedisiplinan','kebersihan','fasilitas','mengajar','tugas','nilai','mapel'];
   const erroredCols = new Set();
   let mapelSeedTried = false;
 
@@ -907,6 +913,7 @@ function onCollectionUpdated(col){
     kehadiran: ['kehadiran','dashboard'],
     kedisiplinan: ['kedisiplinan','dashboard'],
     kebersihan: ['kebersihan','dashboard'],
+    fasilitas: ['fasilitas','dashboard'],
     mengajar: ['mengajar','dashboard'],
     tugas: ['tugas','dashboard'],
     nilai: ['siswa','dashboard'],
@@ -922,7 +929,7 @@ function onCollectionUpdated(col){
    di 1 perangkat saja. Aman dijalankan berkali-kali karena memakai id yang sama (menimpa, bukan duplikat). */
 async function migrateLocalDataToFirebase(){
   if(!firebaseReady || !firebaseDB) return 0;
-  const cols = ['siswa','guru','kehadiran','kedisiplinan','kebersihan','tugas','nilai','mapel'];
+  const cols = ['siswa','guru','kehadiran','kedisiplinan','kebersihan','fasilitas','tugas','nilai','mapel'];
   const updates = {};
   let count = 0;
   for(const col of cols){
@@ -1069,15 +1076,15 @@ async function boot(){
 
   if(!firebaseReady){
     // Mode lokal/offline: siapkan data contoh bila belum ada
-    const [siswa, guru, kehadiran, kedisiplinan, kebersihan, mengajar, tugas, nilai, mapel] = await Promise.all([
+    const [siswa, guru, kehadiran, kedisiplinan, kebersihan, fasilitas, mengajar, tugas, nilai, mapel] = await Promise.all([
       storageGet('siswa-list', null), storageGet('guru-list', null),
       storageGet('kehadiran-records', []), storageGet('kedisiplinan-records', []),
-      storageGet('kebersihan-records', []), storageGet('mengajar-records', []),
+      storageGet('kebersihan-records', []), storageGet('fasilitas-records', []), storageGet('mengajar-records', []),
       storageGet('tugas-records', null), storageGet('nilai-records', []), storageGet('mapel-list', null),
     ]);
     DB.siswa = siswa===null ? seedSiswa() : siswa;
     DB.guru = guru===null ? seedGuru() : guru;
-    DB.kehadiran = kehadiran; DB.kedisiplinan = kedisiplinan; DB.kebersihan = kebersihan; DB.mengajar = mengajar;
+    DB.kehadiran = kehadiran; DB.kedisiplinan = kedisiplinan; DB.kebersihan = kebersihan; DB.fasilitas = fasilitas; DB.mengajar = mengajar;
     DB.tugas = tugas===null ? seedTugas() : tugas;
     DB.nilai = nilai;
     DB.mapel = mapel===null ? seedMapel() : mapel;
@@ -1201,7 +1208,7 @@ function navigate(page){
   const renderers = {
     dashboard: renderDashboard, siswa: renderSiswa, nilai: renderNilai, guru: renderGuru,
     kehadiran: renderKehadiran,
-    kedisiplinan: renderKedisiplinan, kebersihan: renderKebersihan,
+    kedisiplinan: renderKedisiplinan, kebersihan: renderKebersihan, fasilitas: renderFasilitas,
     tugas: renderTugas, pengguna: renderPengguna,
     pencapaian: renderPencapaian, pengaturan: renderPengaturan,
   };
@@ -1349,6 +1356,7 @@ function renderDashboard(){
   const pelanggaranHariIni = DB.kedisiplinan.filter(r=>r.tanggal===today).length;
   const kebersihanHariIni = DB.kebersihan.filter(r=>r.tanggal===today);
   const avgBersih = kebersihanHariIni.length ? Math.round(kebersihanHariIni.reduce((a,b)=>a+b.skor,0)/kebersihanHariIni.length) : null;
+  const fasilitasHariIni = DB.fasilitas.filter(r=>r.tanggal===today).sort((a,b)=>Number(a.jamMulai||1)-Number(b.jamMulai||1));
   const sesiGuruHariIni = groupKehadiranSesi(DB.kehadiran.filter(r=>r.siswaId && r.tanggal===today));
   const sesiGuruMengajar = sesiGuruHariIni.filter(r=>r.materi);
   const pctMengajar = sesiGuruHariIni.length ? Math.round(sesiGuruMengajar.length/sesiGuruHariIni.length*100) : 0;
@@ -1372,6 +1380,7 @@ function renderDashboard(){
       ${statCard(ICONS.mengajar, sesiGuruHariIni.length? pctMengajar+'%':'-', 'Kehadiran Guru Hari Ini', sesiGuruHariIni.length? sesiGuruMengajar.length+' dari '+sesiGuruHariIni.length+' sesi ada materi':'Belum ada data', 'var(--accent)')}
       ${!isGuru?statCard(ICONS.warningTriangle, siswaPerhatian.length, 'Siswa Perlu Perhatian', 'Kehadiran / kedisiplinan', siswaPerhatian.length>0?'var(--danger)':'var(--success)'):''}
       ${statCard(ICONS.clipboard, tugasPending.length, 'Tugas Belum Selesai', 'Catatan dari guru', tugasPending.length>0?'var(--warn)':'var(--success)')}
+      ${statCard(ICONS.fasilitas, fasilitasHariIni.length, 'Penggunaan Fasilitas Hari Ini', fasilitasHariIni.length? fasilitasHariIni.length+' catatan pemakaian':'Belum ada catatan', 'var(--accent)')}
     </div>
 
     <div class="dash-grid-2">
@@ -1409,6 +1418,11 @@ function renderDashboard(){
         <div class="card-head"><div class="flex items-center gap-8"><span class="card-icon-badge" style="background:color-mix(in srgb, var(--primary) 14%, white); color:var(--primary);">${ICONS.bersih}</span><div><h3>Kebersihan Terkini per Kelas</h3><div class="card-sub">Skor penilaian kebersihan terakhir tiap kelas</div></div></div></div>
         <div id="dash-kebersihan-per-kelas"></div>
       </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div class="flex items-center gap-8"><span class="card-icon-badge" style="background:color-mix(in srgb, var(--accent) 16%, white); color:var(--accent);">${ICONS.fasilitas}</span><div><h3>Penggunaan Fasilitas Hari Ini</h3><div class="card-sub">Laptop, Ruang Lab, Infokus &amp; Layar IFP yang sedang/sudah dipakai hari ini</div></div></div></div>
+      <div id="dash-fasilitas-hari-ini"></div>
     </div>
 
     <div class="dash-grid-2">
@@ -1517,6 +1531,19 @@ function renderDashboard(){
         <div class="progress-track"><div class="progress-fill" style="width:${r.skor}%; background:${r.skor>=80?'var(--success)':r.skor>=50?'var(--warn)':'var(--danger)'}"></div></div>
         <div class="p-val">${r.skor}%</div></div>`).join('');
 
+  const fasilitasBlock = document.getElementById('dash-fasilitas-hari-ini');
+  if(fasilitasBlock){
+    fasilitasBlock.innerHTML = fasilitasHariIni.length===0 ? emptyState('Belum ada catatan pemakaian fasilitas hari ini.') : `<div class="table-wrap"><table><thead><tr><th>Jam Ke</th><th>Kelas</th><th>Fasilitas</th><th>Mapel</th><th>Guru</th></tr></thead><tbody>
+      ${fasilitasHariIni.map(r=>`<tr>
+        <td>${r.jamMulai===r.jamSelesai ? 'Ke-'+r.jamMulai : 'Ke-'+r.jamMulai+' s/d Ke-'+r.jamSelesai}</td>
+        <td><span class="pill pill-gray">${escapeHtml(r.kelas||'-')}</span></td>
+        <td>${(r.fasilitas||[]).map(f=>`<span class="pill pill-green" style="margin:2px 4px 2px 0;">${escapeHtml(f)}</span>`).join('') || '-'}</td>
+        <td>${escapeHtml(r.mapel||'-')}</td>
+        <td>${escapeHtml(r.guru||'-')}</td>
+      </tr>`).join('')}
+    </tbody></table></div>`;
+  }
+
   const topBlock = document.getElementById('dash-top-siswa');
   if(topSiswa.length===0){
     topBlock.innerHTML = emptyState('Belum ada cukup data absensi untuk menentukan peringkat.');
@@ -1561,6 +1588,7 @@ function renderDashboard(){
       ...DB.kedisiplinan.map(r=>({...r, _type:'Kedisiplinan', _desc:`${r.namaSiswa} - ${r.jenis}`, _icon:ICONS.disiplin})),
       ...DB.kebersihan.map(r=>({...r, _type:'Kebersihan', _desc:`Kelas ${r.kelas} - skor ${r.skor}%`, _icon:ICONS.bersih})),
       ...groupKehadiranSesi(DB.kehadiran.filter(r=>r.siswaId)).filter(r=>r.namaGuru).map(r=>({...r, _type:'Kehadiran Guru', _desc:`${r.namaGuru} - ${r.mapel} (${r.kelas}) - ${r.materi?'Mengajar':'Tanpa Materi'}`, _icon:ICONS.mengajar})),
+      ...DB.fasilitas.map(r=>({...r, _type:'Fasilitas', _desc:`${(r.fasilitas||[]).join(', ')} - ${r.kelas||'-'} (${r.guru||'-'})`, _icon:ICONS.fasilitas})),
     ].sort((a,b)=> (b.tanggal||'').localeCompare(a.tanggal||'') || (b.id||'').localeCompare(a.id||'')).slice(0,8);
     recentBlock.innerHTML = allRecent.length===0 ? emptyState('Belum ada aktivitas yang tercatat.') : `<div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Modul</th><th>Keterangan</th></tr></thead><tbody>
       ${allRecent.map(r=>`<tr><td>${formatDateShort(r.tanggal)}</td><td><span class="pill pill-gray">${r._icon} ${r._type}</span></td><td>${escapeHtml(r._desc)}</td></tr>`).join('')}
@@ -2555,6 +2583,103 @@ function openBersihForm(){
   });
 }
 
+/* ================= PENGGUNAAN FASILITAS ================= */
+/* Mencatat pemakaian fasilitas sekolah (Laptop, Ruang Lab, Infokus, Layar IFP) oleh guru saat mengajar */
+function renderFasilitas(){
+  const content = document.getElementById('content');
+  content.innerHTML = `
+    <div class="card">
+      <div class="card-head">
+        <div class="flex items-center gap-8"><span class="card-icon-badge" style="background:var(--primary-light); color:var(--primary);">${ICONS.fasilitas}</span><div><h3>Penggunaan Fasilitas</h3><div class="card-sub">Catatan pemakaian Laptop, Ruang Lab, Infokus, dan Layar IFP saat mengajar</div></div></div>
+        <button class="btn btn-primary btn-sm" id="btn-add-fasilitas">${ICONS.plus} Catat Pemakaian</button>
+      </div>
+      <div id="fasilitas-table"></div>
+    </div>
+  `;
+  document.getElementById('btn-add-fasilitas').addEventListener('click', ()=>openFasilitasForm());
+  drawFasilitasTable();
+}
+function drawFasilitasTable(){
+  const wrap = document.getElementById('fasilitas-table');
+  const rows = [...DB.fasilitas].sort((a,b)=> b.tanggal.localeCompare(a.tanggal) || Number(b.jamMulai||1)-Number(a.jamMulai||1));
+  const header = `<div class="toolbar"><button class="btn btn-outline btn-sm" id="btn-sync-fasilitas">${ICONS.cloud} Kirim ke Sheet</button></div>`;
+  if(rows.length===0){ wrap.innerHTML = header+emptyState('Belum ada catatan pemakaian fasilitas.'); }
+  else{
+    wrap.innerHTML = header + `<div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Kelas</th><th>Jam Ke</th><th>Fasilitas</th><th>Mapel</th><th>Guru</th><th>Catatan</th><th></th></tr></thead><tbody>
+      ${rows.map(r=>`<tr>
+        <td>${formatDateShort(r.tanggal)}</td><td><span class="pill pill-gray">${escapeHtml(r.kelas||'-')}</span></td>
+        <td>${r.jamMulai===r.jamSelesai ? 'Ke-'+r.jamMulai : 'Ke-'+r.jamMulai+' s/d Ke-'+r.jamSelesai}</td>
+        <td>${(r.fasilitas||[]).map(f=>`<span class="pill pill-green" style="margin:2px 4px 2px 0;">${escapeHtml(f)}</span>`).join('') || '-'}</td>
+        <td>${escapeHtml(r.mapel||'-')}</td>
+        <td>${escapeHtml(r.guru||'-')}</td>
+        <td>${escapeHtml(r.catatan||'-')}</td>
+        <td><div class="row-actions"><button class="btn-icon btn-del-fasilitas" data-id="${r.id}">${ICONS.trash}</button></div></td>
+      </tr>`).join('')}
+    </tbody></table></div>`;
+  }
+  const syncBtn = document.getElementById('btn-sync-fasilitas');
+  if(syncBtn) syncBtn.addEventListener('click', ()=>syncToSheet('Penggunaan Fasilitas', DB.fasilitas.map(r=>({
+    Tanggal:r.tanggal, Kelas:r.kelas||'', 'Jam Mulai':r.jamMulai, 'Jam Selesai':r.jamSelesai,
+    Fasilitas:(r.fasilitas||[]).join(', '), Mapel:r.mapel||'', Guru:r.guru||'', Catatan:r.catatan||''
+  }))));
+  wrap.querySelectorAll('.btn-del-fasilitas').forEach(b=>b.addEventListener('click', async ()=>{
+    if(confirm('Hapus catatan pemakaian fasilitas ini?')){
+      await removeRecord('fasilitas', b.dataset.id, drawFasilitasTable);
+      if(!firebaseReady) drawFasilitasTable();
+      toast('Catatan dihapus', 'success');
+    }
+  }));
+}
+function openFasilitasForm(){
+  openModal(`
+    <div class="modal-head"><h3>Catat Pemakaian Fasilitas</h3><button class="btn-icon" onclick="closeModal()">${ICONS.close}</button></div>
+    <form id="fasilitas-form">
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field"><label>Tanggal</label><input type="date" required id="f-tanggal" value="${todayStr()}"/></div>
+          <div class="field"><label>Kelas</label><select required id="f-kelas"><option value="">- Pilih Kelas -</option>${KELAS_LIST.map(k=>`<option value="${k}">${k}</option>`).join('')}</select></div>
+          <div class="field"><label>Dipakai dari Jam Ke</label><select id="f-jam-mulai">${JAM_KE_LIST.map(j=>`<option value="${j}">Jam Ke-${j}</option>`).join('')}</select></div>
+          <div class="field"><label>Sampai Jam Ke</label><select id="f-jam-selesai">${JAM_KE_LIST.map(j=>`<option value="${j}">Jam Ke-${j}</option>`).join('')}</select></div>
+          <div class="field"><label>Mata Pelajaran</label><select id="f-mapel"><option value="">- Pilih Mapel -</option>${mapelNames().map(m=>`<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('')}</select></div>
+          <div class="field"><label>Nama Guru</label>
+            <input required id="f-guru" list="guru-datalist-fasilitas" placeholder="Ketik atau pilih nama guru" value="${currentUser.role==='guru'?escapeHtml(currentUser.name):''}"/>
+            <datalist id="guru-datalist-fasilitas">${DB.guru.map(g=>`<option value="${escapeHtml(g.nama)}">`).join('')}</datalist>
+          </div>
+        </div>
+        <div style="margin-top:16px;">
+          <label style="display:block; font-size:12.5px; font-weight:600; color:var(--muted); margin-bottom:10px; text-transform:uppercase; letter-spacing:0.4px;">Fasilitas yang Dipakai (boleh pilih lebih dari satu)</label>
+          ${FASILITAS_LIST.map((item,i)=>`<label class="checklist-item" id="fi-${i}"><input type="checkbox" class="fasilitas-check" data-val="${escapeHtml(item)}"/><span>${item}</span></label>`).join('')}
+        </div>
+        <div class="field full" style="margin-top:12px;"><label>Catatan Tambahan (opsional)</label><textarea id="f-catatan" rows="2" placeholder="Contoh: Layar IFP di kelas XI IPA 1 sedikit redup"></textarea></div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-outline" onclick="closeModal()">Batal</button>
+        <button type="submit" class="btn btn-primary">Simpan Catatan</button>
+      </div>
+    </form>
+  `);
+  document.querySelectorAll('.fasilitas-check').forEach(cb=>{
+    cb.addEventListener('change', function(){ this.closest('.checklist-item').classList.toggle('checked', this.checked); });
+  });
+  document.getElementById('fasilitas-form').addEventListener('submit', async function(e){
+    e.preventDefault();
+    const dipilih = Array.from(document.querySelectorAll('.fasilitas-check')).filter(c=>c.checked).map(c=>c.dataset.val);
+    if(dipilih.length===0){ toast('Pilih minimal 1 fasilitas yang dipakai', 'error'); return; }
+    const jamMulai = Number(document.getElementById('f-jam-mulai').value)||1;
+    const jamSelesai = Number(document.getElementById('f-jam-selesai').value)||jamMulai;
+    const data = {
+      id:uid(), tanggal: document.getElementById('f-tanggal').value, kelas: document.getElementById('f-kelas').value,
+      jamMulai, jamSelesai: jamSelesai<jamMulai?jamMulai:jamSelesai,
+      mapel: document.getElementById('f-mapel').value, guru: document.getElementById('f-guru').value.trim(),
+      fasilitas: dipilih, catatan: document.getElementById('f-catatan').value.trim(),
+    };
+    await upsertRecord('fasilitas', data, false, drawFasilitasTable);
+    closeModal();
+    if(!firebaseReady) drawFasilitasTable();
+    toast('Pemakaian fasilitas tercatat', 'success');
+  });
+}
+
 
 /* ================= CATATAN TUGAS ================= */
 function renderTugas(){
@@ -3162,7 +3287,7 @@ function renderPengaturan(){
   document.getElementById('btn-export-data').addEventListener('click', ()=>{
     const backup = {
       exportedAt: new Date().toISOString(), siswa: DB.siswa, guru: DB.guru, kehadiran: DB.kehadiran,
-      kedisiplinan: DB.kedisiplinan, kebersihan: DB.kebersihan, mengajar: DB.mengajar, tugas: DB.tugas, nilai: DB.nilai, mapel: DB.mapel, settings: DB.settings,
+      kedisiplinan: DB.kedisiplinan, kebersihan: DB.kebersihan, fasilitas: DB.fasilitas, mengajar: DB.mengajar, tugas: DB.tugas, nilai: DB.nilai, mapel: DB.mapel, settings: DB.settings,
     };
     const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
     const a = document.createElement('a');
@@ -3179,12 +3304,12 @@ function renderPengaturan(){
         const data = JSON.parse(evt.target.result);
         if(!confirm('Impor data ini akan MENGGANTI seluruh data yang tersimpan saat ini di perangkat ini. Lanjutkan?')) return;
         DB.siswa = data.siswa || []; DB.guru = data.guru || []; DB.kehadiran = data.kehadiran || [];
-        DB.kedisiplinan = data.kedisiplinan || []; DB.kebersihan = data.kebersihan || [];
+        DB.kedisiplinan = data.kedisiplinan || []; DB.kebersihan = data.kebersihan || []; DB.fasilitas = data.fasilitas || [];
         DB.mengajar = data.mengajar || []; DB.tugas = data.tugas || []; DB.nilai = data.nilai || []; DB.mapel = data.mapel || []; DB.settings = data.settings || DB.settings;
         Promise.all([
           storageSet('siswa-list', DB.siswa), storageSet('guru-list', DB.guru),
           storageSet('kehadiran-records', DB.kehadiran), storageSet('kedisiplinan-records', DB.kedisiplinan),
-          storageSet('kebersihan-records', DB.kebersihan), storageSet('mengajar-records', DB.mengajar),
+          storageSet('kebersihan-records', DB.kebersihan), storageSet('fasilitas-records', DB.fasilitas), storageSet('mengajar-records', DB.mengajar),
           storageSet('tugas-records', DB.tugas), storageSet('nilai-records', DB.nilai), storageSet('mapel-list', DB.mapel), storageSet('app-settings', DB.settings),
         ]).then(async ()=>{
           if(firebaseReady) await pushSettingsToFirebase();
