@@ -913,6 +913,26 @@ function onCollectionUpdated(col){
   }
 }
 
+/* Unggah data yang masih tersimpan di localStorage (dari sebelum tersambung Firebase, atau saat sempat
+   offline) ke Database Online. Dipakai lewat tombol di Pengaturan supaya data lama tidak "terjebak"
+   di 1 perangkat saja. Aman dijalankan berkali-kali karena memakai id yang sama (menimpa, bukan duplikat). */
+async function migrateLocalDataToFirebase(){
+  if(!firebaseReady || !firebaseDB) return 0;
+  const cols = ['siswa','guru','kehadiran','kedisiplinan','kebersihan','tugas','nilai','mapel'];
+  const updates = {};
+  let count = 0;
+  for(const col of cols){
+    const localData = await storageGet(LOCAL_KEY[col], []);
+    if(Array.isArray(localData)){
+      localData.forEach(item=>{
+        if(item && item.id){ updates['data/'+col+'/'+item.id] = item; count++; }
+      });
+    }
+  }
+  if(count>0) await firebaseDB.ref().update(updates);
+  return count;
+}
+
 /* Kirim Pengaturan (nama sekolah, tema, URL Sheet) ke Firebase agar tersinkron ke semua perangkat.
    Dipanggil setelah setiap perubahan disimpan lokal, hanya jika sedang online. */
 async function pushSettingsToFirebase(){
@@ -1334,6 +1354,7 @@ function renderDashboard(){
   const trend = computeAttendanceTrend(10);
   const distribusi = computePelanggaranDistribution();
   const isGuru = currentUser.role==='guru';
+  const topNilaiSiswa = computeRataNilaiSiswa({kelas:'', mapel:'', semester:'', tahun:''})[0] || null;
 
   const content = document.getElementById('content');
   content.innerHTML = `
@@ -1341,6 +1362,7 @@ function renderDashboard(){
       ${statCard(ICONS.siswa, totalSiswa, 'Total Siswa', '', 'var(--primary)')}
       ${!isGuru?statCard(ICONS.guru, totalGuru, 'Total Guru', '', 'var(--accent)'):''}
       ${statCard(ICONS.kehadiran, kehadiranDetailHariIni.length? pctHadir+'%' : '-', 'Kehadiran Hari Ini', kehadiranDetailHariIni.length? hadirCount+' dari '+kehadiranDetailHariIni.length+' tercatat' : 'Belum ada data', pctHadir>=85?'var(--success)':'var(--warn)')}
+      ${!isGuru?statCard(ICONS.star, topNilaiSiswa? topNilaiSiswa.rata : '-', 'Siswa Nilai Tertinggi', topNilaiSiswa? topNilaiSiswa.nama+' ('+topNilaiSiswa.kelas+')' : 'Belum ada data nilai', 'var(--accent)'):''}
       ${!isGuru?statCard(ICONS.disiplin, pelanggaranHariIni, 'Pelanggaran Hari Ini', 'Kedisiplinan siswa', pelanggaranHariIni>0?'var(--danger)':'var(--success)'):''}
       ${!isGuru?statCard(ICONS.bersih, avgBersih!==null? avgBersih+'%':'-', 'Rata-rata Kebersihan', avgBersih!==null? kebersihanHariIni.length+' kelas dinilai':'Belum ada data', 'var(--primary)'):''}
       ${statCard(ICONS.mengajar, sesiGuruHariIni.length? pctMengajar+'%':'-', 'Kehadiran Guru Hari Ini', sesiGuruHariIni.length? sesiGuruMengajar.length+' dari '+sesiGuruHariIni.length+' sesi ada materi':'Belum ada data', 'var(--accent)')}
@@ -3006,6 +3028,11 @@ function renderPengaturan(){
         <label class="btn btn-outline btn-sm" for="import-file-input" style="margin:0;">${ICONS.cloud} Impor Data dari File</label>
         <input type="file" id="import-file-input" accept="application/json" style="display:none;"/>
       </div>
+      ${firebaseReady?`
+      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+        <p style="font-size:12.8px; color:var(--muted); margin-bottom:10px; line-height:1.6;">Punya data siswa/guru/dsb yang diinput <b>sebelum</b> database online disambungkan (atau sempat diinput saat koneksi terputus)? Data itu masih tersimpan di komputer ini saja. Klik tombol di bawah untuk mengunggahnya ke Database Online supaya muncul juga di perangkat lain.</p>
+        <button class="btn btn-primary btn-sm" id="btn-migrate-local">${ICONS.wifi} Unggah Data Lokal Komputer Ini ke Online</button>
+      </div>`:''}
     </div>
 
     <div class="card">
@@ -3109,6 +3136,23 @@ function renderPengaturan(){
     await storageSet('app-settings', DB.settings);
     await pushSettingsToFirebase();
     toast('URL Google Sheet disimpan', 'success');
+  });
+
+  const migrateBtn = document.getElementById('btn-migrate-local');
+  if(migrateBtn) migrateBtn.addEventListener('click', async ()=>{
+    if(!confirm('Ini akan mengunggah semua data (siswa, guru, kehadiran, dll) yang tersimpan di localStorage komputer ini ke Database Online. Data dengan ID yang sama di online akan ditimpa oleh data dari komputer ini. Lanjutkan?')) return;
+    migrateBtn.disabled = true;
+    migrateBtn.textContent = 'Mengunggah...';
+    try{
+      const count = await migrateLocalDataToFirebase();
+      toast(count>0 ? ('Berhasil mengunggah '+count+' data ke online.') : 'Tidak ada data lokal yang perlu diunggah.', 'success');
+    }catch(err){
+      console.error('Gagal migrasi data lokal ke Firebase:', err);
+      toast('Gagal mengunggah data: '+(err&&err.message?err.message:'periksa Security Rules Firebase Anda'), 'error');
+    }finally{
+      migrateBtn.disabled = false;
+      migrateBtn.innerHTML = ICONS.wifi+' Unggah Data Lokal Komputer Ini ke Online';
+    }
   });
 
   document.getElementById('btn-export-data').addEventListener('click', ()=>{
