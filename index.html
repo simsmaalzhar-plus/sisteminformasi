@@ -4,10 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SIM Monitoring - SMA Al Azhar Plus Kota Bogor</title>
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-<meta http-equiv="Pragma" content="no-cache" />
-<meta http-equiv="Expires" content="0" />
-<meta name="app-version" content="20260806-1" />
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap');
 
@@ -199,7 +195,7 @@ input, select, textarea{font-family:inherit; font-size:14px;}
   transition:background .15s, color .15s;
   cursor:pointer;
 }
-.nav-item svg{width:18px; height:18px; flex-shrink:0; opacity:0.85;}
+.nav-item svg{width:20px; height:20px; flex-shrink:0; opacity:1; color:#fff; stroke-width:2.4;}
 .nav-item:hover{background:rgba(255,255,255,0.09); color:#fff;}
 .nav-item.active{background:rgba(255,255,255,0.16); color:#fff; font-weight:600;}
 .nav-item.active svg{opacity:1;}
@@ -375,6 +371,23 @@ textarea.code-box{
 .menu-toggle{display:none; background:transparent; border:none; padding:6px;}
 
 /* ================= DASHBOARD EXTRAS ================= */
+.dash-kelas-block{margin-bottom:16px;}
+.dash-kelas-block:last-child{margin-bottom:0;}
+.dash-kelas-title{display:flex; align-items:center; gap:10px; margin-bottom:8px;}
+.dash-kelas-count{font-size:11.5px; color:var(--muted); font-weight:600;}
+.dash-list-row{
+  display:flex; align-items:center; flex-wrap:wrap; gap:6px 12px;
+  padding:10px 4px; border-bottom:1px solid var(--border);
+}
+.dash-list-row:last-child{border-bottom:none;}
+.dash-list-main{display:flex; align-items:center; gap:8px; font-size:13px; flex:1 1 200px; min-width:0;}
+.dash-list-main b{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.dash-list-sub{font-size:11.8px; color:var(--muted); flex:1 1 100%; order:3;}
+.dash-list-row .btn{flex-shrink:0; margin-left:auto;}
+@media (max-width:480px){
+  .dash-list-row{flex-direction:column; align-items:flex-start;}
+  .dash-list-row .btn{margin-left:0; width:100%; justify-content:center;}
+}
 .dash-grid-2{display:grid; grid-template-columns:1.3fr 1fr; gap:20px; margin-bottom:20px;}
 .dash-grid-2 .card{margin-bottom:0;}
 .card-icon-badge{
@@ -499,6 +512,91 @@ textarea.code-box{
   thead th, tbody td{padding:10px;}
 }
 
+/* ================= LAPORAN CETAK / PDF (Pencapaian Saya) ================= */
+.print-header{display:none;}
+.print-header .ph-school{font-family:var(--font-display); font-weight:800; font-size:16px; color:var(--primary-dark);}
+.print-header .ph-title{font-size:13px; color:var(--muted); margin-top:2px;}
+.print-header .ph-meta{font-size:11.5px; color:var(--muted); margin-top:10px; border-top:1px dashed var(--border); padding-top:10px;}
+.print-header{margin-bottom:18px; padding-bottom:14px; border-bottom:2px solid var(--primary);}
+/* Saat area laporan sedang diambil sebagai gambar untuk PDF, tampilkan header laporan */
+body.pdf-export-mode .print-header{display:block;}
+body.pdf-export-mode #pencapaian-print-area{background:var(--surface);}
+
+@media print{
+  body *{visibility:hidden !important;}
+  #pencapaian-print-area, #pencapaian-print-area *{visibility:visible !important;}
+  #pencapaian-print-area{position:absolute; top:0; left:0; width:100%; margin:0; padding:0;}
+  .print-header{display:block !important;}
+  .card{box-shadow:none !important; border:1px solid #ddd !important; break-inside:avoid; page-break-inside:avoid;}
+  .toast-wrap, .modal-overlay, .sidebar, .topbar, .sidebar-backdrop{display:none !important;}
+  @page{size:A4; margin:14mm;}
+}
+
+/* ================= ANIMASI & MICRO-INTERACTIONS ================= */
+@media (prefers-reduced-motion: no-preference){
+  /* Transisi halus tiap kali berpindah halaman/menu */
+  #content.page-enter{animation:contentFadeIn .32s ease;}
+  @keyframes contentFadeIn{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
+
+  /* Kartu & stat-card muncul dengan efek naik + fade, tersusun bertahap (stagger) */
+  .card, .stat-card{animation:cardRise .42s cubic-bezier(.2,.75,.3,1) both;}
+  .stat-grid .stat-card:nth-child(1){animation-delay:.02s;}
+  .stat-grid .stat-card:nth-child(2){animation-delay:.07s;}
+  .stat-grid .stat-card:nth-child(3){animation-delay:.12s;}
+  .stat-grid .stat-card:nth-child(4){animation-delay:.17s;}
+  .content > .card:nth-of-type(1){animation-delay:.03s;}
+  .content > .card:nth-of-type(2){animation-delay:.08s;}
+  .content > .card:nth-of-type(3){animation-delay:.13s;}
+  .content > .card:nth-of-type(4){animation-delay:.18s;}
+  .content > .card:nth-of-type(n+5){animation-delay:.2s;}
+  @keyframes cardRise{from{opacity:0; transform:translateY(12px);} to{opacity:1; transform:translateY(0);}}
+
+  /* Kartu terasa "hidup" saat disentuh/hover */
+  .stat-card{transition:transform .18s ease, box-shadow .18s ease;}
+  .stat-card:hover{transform:translateY(-3px); box-shadow:0 14px 30px -16px rgba(11,110,79,0.3);}
+  .card{transition:box-shadow .2s ease;}
+  .card:hover{box-shadow:0 10px 26px -18px rgba(20,24,22,0.2);}
+
+  /* Menu sidebar: sedikit geser saat hover/aktif */
+  .nav-item{transition:background .15s ease, color .15s ease, transform .15s ease;}
+  .nav-item:hover{transform:translateX(3px);}
+  .nav-item.active{transform:translateX(2px);}
+
+  /* Tombol lebih responsif secara visual */
+  .btn{transition:transform .12s ease, box-shadow .16s ease, background .16s ease;}
+  .btn-primary:hover{transform:translateY(-1px); box-shadow:0 10px 22px -8px rgba(11,110,79,0.55);}
+  .btn-accent:hover, .btn-outline:hover{transform:translateY(-1px);}
+  .btn:active{transform:scale(0.96);}
+  .btn-icon{transition:transform .15s ease, background .15s ease;}
+  .btn-icon:hover{transform:scale(1.08);}
+
+  /* Modal: muncul dengan efek pop + overlay memudar */
+  .modal-overlay.active{animation:overlayFade .18s ease;}
+  @keyframes overlayFade{from{opacity:0;} to{opacity:1;}}
+  .modal-overlay.active .modal{animation:modalPop .25s cubic-bezier(.2,.85,.32,1.15);}
+  @keyframes modalPop{from{opacity:0; transform:scale(.94) translateY(10px);} to{opacity:1; transform:scale(1) translateY(0);}}
+
+  /* Kartu login muncul dengan lembut saat halaman dibuka */
+  .login-card{animation:loginPop .55s cubic-bezier(.2,.8,.3,1.1);}
+  @keyframes loginPop{from{opacity:0; transform:translateY(18px) scale(.97);} to{opacity:1; transform:translateY(0) scale(1);}}
+
+  /* Progress bar & baris tabel */
+  .progress-fill{transition:width .7s cubic-bezier(.22,.9,.3,1);}
+  tbody tr{transition:background .15s ease;}
+  .pill{transition:transform .12s ease;}
+  .pill:hover{transform:translateY(-1px);}
+
+  /* Ikon berputar untuk status memuat (mis. tombol Unduh PDF) */
+  .icon-spin{display:inline-flex; animation:spin .8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .toast{animation:toastIn .3s cubic-bezier(.2,.85,.3,1.15);}
+}
+/* Hormati preferensi pengguna yang meminta gerakan lebih sedikit */
+@media (prefers-reduced-motion: reduce){
+  *, *::before, *::after{animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; scroll-behavior:auto !important;}
+}
+
 </style>
 </head>
 <body>
@@ -616,18 +714,25 @@ const ICONS = {
   wifi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>',
   wifiOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.58 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>',
   medal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="15" r="6"/><path d="M9 10.5 6 2h4l2 4.5L14 2h4l-3 8.5"/></svg>',
-  fasilitas: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',
+  printer: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>',
+  download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+  spinner: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9" opacity="0.25"/><path d="M21 12a9 9 0 0 0-9-9"/></svg>',
+  messageCircle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"/></svg>',
+  jadwal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h2M8 17h6M14 14h2"/></svg>',
+  bellRing: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M4 4 2 6M20 4l2 2"/></svg>',
 };
 
 /* ---------------- Konstanta ---------------- */
 const KELAS_LIST = ['X-1','X-2','X-3','XI IPA 1','XI IPA 2','XI IPS 1','XII IPA 1','XII IPA 2','XII IPS 1'];
+const HARI_LIST = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+function hariIniIndo(){
+  return ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][new Date().getDay()];
+}
 const JENIS_PELANGGARAN = ['Terlambat masuk sekolah','Atribut tidak lengkap','Tidak mengerjakan tugas','Bolos pelajaran','Menggunakan HP saat KBM','Tidak mengikuti upacara','Lainnya'];
 const PRIORITAS_LIST = ['Tinggi','Sedang','Biasa'];
 const STATUS_MENGAJAR = ['Hadir','Tidak Hadir','Memberikan Tugas'];
 const JAM_KE_LIST = [1,2,3,4,5,6,7,8,9,10];
 const KEBERSIHAN_ITEMS = ['Lantai bersih & tidak berdebu','Meja dan kursi tersusun rapi','Papan tulis bersih','Tidak ada sampah berserakan','Tempat sampah tidak penuh','Dinding & jendela bersih'];
-/* Daftar fasilitas sekolah yang bisa dipinjam/dipakai guru untuk mengajar */
-const FASILITAS_LIST = ['Laptop','Ruang Lab','Infokus (Proyektor)','Layar IFP (Papan Tulis Pintar)'];
 
 /* Daftar bawaan mata pelajaran umum jenjang SMA — hanya dipakai untuk mengisi data awal (seed).
    Sesudah itu daftar mata pelajaran dikelola secara dinamis lewat DB.mapel (menu Data Guru > Mata Pelajaran). */
@@ -690,18 +795,18 @@ const NAV_BY_ROLE = {
     {key:'siswa', label:'Data Siswa', icon:ICONS.siswa},
     {key:'nilai', label:'Nilai Siswa', icon:ICONS.star},
     {key:'guru', label:'Data Guru', icon:ICONS.guru},
+    {key:'jadwal', label:'Jadwal Pelajaran', icon:ICONS.jadwal},
     {key:'kehadiran', label:'Kehadiran', icon:ICONS.kehadiran},
     {key:'kedisiplinan', label:'Kedisiplinan', icon:ICONS.disiplin},
     {key:'kebersihan', label:'Kebersihan Kelas', icon:ICONS.bersih},
-    {key:'fasilitas', label:'Penggunaan Fasilitas', icon:ICONS.fasilitas},
     {key:'tugas', label:'Catatan Tugas', icon:ICONS.clipboard},
     {key:'pengguna', label:'Kelola Pengguna', icon:ICONS.users},
     {key:'pengaturan', label:'Pengaturan', icon:ICONS.settings},
   ],
   guru: [
     {key:'dashboard', label:'Dashboard', icon:ICONS.dashboard},
+    {key:'jadwal', label:'Jadwal Pelajaran', icon:ICONS.jadwal},
     {key:'kehadiran', label:'Input Kehadiran', icon:ICONS.kehadiran},
-    {key:'fasilitas', label:'Penggunaan Fasilitas', icon:ICONS.fasilitas},
     {key:'tugas', label:'Catatan Tugas', icon:ICONS.clipboard},
   ],
   siswa: [
@@ -715,10 +820,10 @@ const ALL_NAV_ITEMS = [
   {key:'siswa', label:'Data Siswa', icon:ICONS.siswa},
   {key:'nilai', label:'Nilai Siswa', icon:ICONS.star},
   {key:'guru', label:'Data Guru', icon:ICONS.guru},
+  {key:'jadwal', label:'Jadwal Pelajaran', icon:ICONS.jadwal},
   {key:'kehadiran', label:'Kehadiran', icon:ICONS.kehadiran},
   {key:'kedisiplinan', label:'Kedisiplinan', icon:ICONS.disiplin},
   {key:'kebersihan', label:'Kebersihan Kelas', icon:ICONS.bersih},
-  {key:'fasilitas', label:'Penggunaan Fasilitas', icon:ICONS.fasilitas},
   {key:'tugas', label:'Catatan Tugas', icon:ICONS.clipboard},
   {key:'pengguna', label:'Kelola Pengguna', icon:ICONS.users},
   {key:'pencapaian', label:'Pencapaian Saya', icon:ICONS.dashboard},
@@ -734,7 +839,7 @@ function getNavForUser(user){
 }
 
 /* ---------------- State global ---------------- */
-let DB = { siswa:[], guru:[], kehadiran:[], kedisiplinan:[], kebersihan:[], fasilitas:[], mengajar:[], tugas:[], nilai:[], mapel:[], users:{}, settings:null };
+let DB = { siswa:[], guru:[], kehadiran:[], kedisiplinan:[], kebersihan:[], mengajar:[], tugas:[], nilai:[], mapel:[], jadwal:[], users:{}, settings:null };
 let currentUser = null;   // {uid, name, role, email, siswaId?, guruId?}
 let currentPage = 'dashboard';
 let firebaseApp = null, firebaseAuth = null, firebaseDB = null, firebaseReady = false;
@@ -773,8 +878,9 @@ async function storageSet(key, value){
 
 const LOCAL_KEY = {
   siswa:'siswa-list', guru:'guru-list', kehadiran:'kehadiran-records',
-  kedisiplinan:'kedisiplinan-records', kebersihan:'kebersihan-records', fasilitas:'fasilitas-records',
+  kedisiplinan:'kedisiplinan-records', kebersihan:'kebersihan-records',
   mengajar:'mengajar-records', tugas:'tugas-records', nilai:'nilai-records', mapel:'mapel-list',
+  jadwal:'jadwal-list',
 };
 
 /* ---------------- Lapisan Akses Data (DAL) ----------------
@@ -853,38 +959,9 @@ function detachFirebaseListeners(){
   fbListeners = [];
 }
 function attachFirebaseListeners(){
-  const collections = ['siswa','guru','kehadiran','kedisiplinan','kebersihan','fasilitas','mengajar','tugas','nilai','mapel'];
+  const collections = ['siswa','guru','kehadiran','kedisiplinan','kebersihan','mengajar','tugas','nilai','mapel','jadwal'];
   const erroredCols = new Set();
   let mapelSeedTried = false;
-
-  /* Sinkronkan Pengaturan (nama sekolah, tema, URL Google Sheet) lewat Firebase
-     supaya perubahan di 1 perangkat langsung berlaku di semua perangkat lain.
-     firebaseConfig TIDAK disinkron (tetap lokal per-perangkat) karena dibutuhkan
-     SEBELUM koneksi online terbentuk (masalah ayam-telur). */
-  const settingsRef = firebaseDB.ref('data/appsettings');
-  let settingsSeeded = false;
-  const settingsFn = settingsRef.on('value', snap=>{
-    const val = snap.val();
-    if(val === null){
-      // Belum ada data settings online sama sekali -> unggah settings lokal saat ini sebagai nilai awal
-      if(!settingsSeeded){
-        settingsSeeded = true;
-        settingsRef.set({schoolName:DB.settings.schoolName, theme:DB.settings.theme, sheetUrl:DB.settings.sheetUrl||''}).catch(()=>{});
-      }
-      return;
-    }
-    DB.settings.schoolName = val.schoolName || DB.settings.schoolName;
-    DB.settings.theme = val.theme || DB.settings.theme;
-    DB.settings.sheetUrl = (val.sheetUrl!==undefined && val.sheetUrl!==null) ? val.sheetUrl : DB.settings.sheetUrl;
-    storageSet('app-settings', DB.settings);
-    applyTheme(DB.settings.theme || DEFAULT_THEME);
-    updateSchoolNameUI();
-    if(currentPage==='pengaturan' && document.getElementById('app-shell').classList.contains('active')) renderPengaturan();
-  }, err=>{
-    console.error('Gagal membaca pengaturan dari Firebase:', err);
-  });
-  fbListeners.push({ref:settingsRef, fn:settingsFn});
-
   collections.forEach(col=>{
     const ref = firebaseDB.ref('data/'+col);
     const fn = ref.on('value', snap=>{
@@ -909,52 +986,18 @@ function attachFirebaseListeners(){
 function onCollectionUpdated(col){
   const affects = {
     siswa: ['siswa','dashboard','kehadiran','kedisiplinan','tugas','mengajar'],
-    guru: ['guru','dashboard','tugas','mengajar'],
+    guru: ['guru','dashboard','tugas','mengajar','jadwal'],
     kehadiran: ['kehadiran','dashboard'],
     kedisiplinan: ['kedisiplinan','dashboard'],
     kebersihan: ['kebersihan','dashboard'],
-    fasilitas: ['fasilitas','dashboard'],
     mengajar: ['mengajar','dashboard'],
     tugas: ['tugas','dashboard'],
     nilai: ['siswa','dashboard'],
     mapel: ['guru','siswa','dashboard'],
+    jadwal: ['jadwal','dashboard'],
   };
   if(affects[col] && affects[col].includes(currentPage) && document.getElementById('app-shell').classList.contains('active')){
     navigate(currentPage);
-  }
-}
-
-/* Unggah data yang masih tersimpan di localStorage (dari sebelum tersambung Firebase, atau saat sempat
-   offline) ke Database Online. Dipakai lewat tombol di Pengaturan supaya data lama tidak "terjebak"
-   di 1 perangkat saja. Aman dijalankan berkali-kali karena memakai id yang sama (menimpa, bukan duplikat). */
-async function migrateLocalDataToFirebase(){
-  if(!firebaseReady || !firebaseDB) return 0;
-  const cols = ['siswa','guru','kehadiran','kedisiplinan','kebersihan','fasilitas','tugas','nilai','mapel'];
-  const updates = {};
-  let count = 0;
-  for(const col of cols){
-    const localData = await storageGet(LOCAL_KEY[col], []);
-    if(Array.isArray(localData)){
-      localData.forEach(item=>{
-        if(item && item.id){ updates['data/'+col+'/'+item.id] = item; count++; }
-      });
-    }
-  }
-  if(count>0) await firebaseDB.ref().update(updates);
-  return count;
-}
-
-/* Kirim Pengaturan (nama sekolah, tema, URL Sheet) ke Firebase agar tersinkron ke semua perangkat.
-   Dipanggil setelah setiap perubahan disimpan lokal, hanya jika sedang online. */
-async function pushSettingsToFirebase(){
-  if(!firebaseReady || !firebaseDB) return;
-  try{
-    await firebaseDB.ref('data/appsettings').set({
-      schoolName: DB.settings.schoolName, theme: DB.settings.theme, sheetUrl: DB.settings.sheetUrl||'',
-    });
-  }catch(err){
-    console.error('Gagal menyinkronkan pengaturan ke Firebase:', err);
-    toast('Pengaturan tersimpan lokal, tapi gagal disinkron ke perangkat lain: '+(err&&err.message?err.message:'periksa Security Rules Firebase Anda'), 'error');
   }
 }
 
@@ -1035,6 +1078,22 @@ function seedTugas(){
     {id:uid(), judul:'Siapkan materi praktik komputer', guru:'Bambang Setiawan, S.Kom', kelas:'X-1', deadline:t, prioritas:'Sedang', status:'Belum Selesai', catatan:''},
   ];
 }
+function seedJadwal(daftarGuru){
+  const g = daftarGuru && daftarGuru.length ? daftarGuru : [];
+  const hariIni = hariIniIndo();
+  if(!g.length) return [];
+  const list = [
+    {hari:hariIni, kelas:'X-1', guru:g[0], jamKeMulai:1, jamKeSelesai:2, waktuMulai:'07:00', waktuSelesai:'08:30'},
+    {hari:hariIni, kelas:'XI IPA 1', guru:g[1]||g[0], jamKeMulai:3, jamKeSelesai:4, waktuMulai:'08:30', waktuSelesai:'10:00'},
+    {hari:hariIni, kelas:'XII IPA 2', guru:g[2]||g[0], jamKeMulai:1, jamKeSelesai:2, waktuMulai:'07:00', waktuSelesai:'08:30'},
+  ];
+  return list.filter(x=>x.guru).map(x=>({
+    id:uid(), hari:x.hari, kelas:x.kelas, guruId:x.guru.id, namaGuru:x.guru.nama,
+    mapel:(Array.isArray(x.guru.mapelList)&&x.guru.mapelList[0])||x.guru.mapel||'-',
+    jamKeMulai:x.jamKeMulai, jamKeSelesai:x.jamKeSelesai,
+    waktuMulai:x.waktuMulai, waktuSelesai:x.waktuSelesai,
+  }));
+}
 
 /* Konfigurasi Firebase bawaan agar aplikasi otomatis terkoneksi saat dibuka */
 const DEFAULT_FIREBASE_CONFIG = {
@@ -1076,22 +1135,25 @@ async function boot(){
 
   if(!firebaseReady){
     // Mode lokal/offline: siapkan data contoh bila belum ada
-    const [siswa, guru, kehadiran, kedisiplinan, kebersihan, fasilitas, mengajar, tugas, nilai, mapel] = await Promise.all([
+    const [siswa, guru, kehadiran, kedisiplinan, kebersihan, mengajar, tugas, nilai, mapel, jadwal] = await Promise.all([
       storageGet('siswa-list', null), storageGet('guru-list', null),
       storageGet('kehadiran-records', []), storageGet('kedisiplinan-records', []),
-      storageGet('kebersihan-records', []), storageGet('fasilitas-records', []), storageGet('mengajar-records', []),
+      storageGet('kebersihan-records', []), storageGet('mengajar-records', []),
       storageGet('tugas-records', null), storageGet('nilai-records', []), storageGet('mapel-list', null),
+      storageGet('jadwal-list', null),
     ]);
     DB.siswa = siswa===null ? seedSiswa() : siswa;
     DB.guru = guru===null ? seedGuru() : guru;
-    DB.kehadiran = kehadiran; DB.kedisiplinan = kedisiplinan; DB.kebersihan = kebersihan; DB.fasilitas = fasilitas; DB.mengajar = mengajar;
+    DB.kehadiran = kehadiran; DB.kedisiplinan = kedisiplinan; DB.kebersihan = kebersihan; DB.mengajar = mengajar;
     DB.tugas = tugas===null ? seedTugas() : tugas;
     DB.nilai = nilai;
     DB.mapel = mapel===null ? seedMapel() : mapel;
+    DB.jadwal = jadwal===null ? seedJadwal(DB.guru) : jadwal;
     if(siswa===null) storageSet('siswa-list', DB.siswa);
     if(guru===null) storageSet('guru-list', DB.guru);
     if(tugas===null) storageSet('tugas-records', DB.tugas);
     if(mapel===null) storageSet('mapel-list', DB.mapel);
+    if(jadwal===null) storageSet('jadwal-list', DB.jadwal);
   }
 
   setupLogin();
@@ -1207,12 +1269,15 @@ function navigate(page){
   content.innerHTML = '';
   const renderers = {
     dashboard: renderDashboard, siswa: renderSiswa, nilai: renderNilai, guru: renderGuru,
-    kehadiran: renderKehadiran,
-    kedisiplinan: renderKedisiplinan, kebersihan: renderKebersihan, fasilitas: renderFasilitas,
+    kehadiran: currentUser.role==='guru' ? renderKehadiranGuruMode : renderKehadiran,
+    kedisiplinan: renderKedisiplinan, kebersihan: renderKebersihan,
     tugas: renderTugas, pengguna: renderPengguna,
-    pencapaian: renderPencapaian, pengaturan: renderPengaturan,
+    pencapaian: renderPencapaian, pengaturan: renderPengaturan, jadwal: renderJadwal,
   };
   (renderers[page] || renderDashboard)();
+  content.classList.remove('page-enter');
+  void content.offsetWidth; /* paksa reflow agar animasi CSS diputar ulang tiap pindah halaman */
+  content.classList.add('page-enter');
 }
 
 /* ================= Modal ================= */
@@ -1310,6 +1375,30 @@ function computeSiswaPerhatian(){
   });
   return Object.values(flagged).sort((a,b)=>b.reasons.length-a.reasons.length);
 }
+function computeSiswaTidakHadirHariIni(){
+  const today = todayStr();
+  const records = DB.kehadiran.filter(r=>r.siswaId && r.tanggal===today && r.status && r.status!=='Hadir');
+  const bySiswa = {};
+  records.forEach(r=>{
+    if(!bySiswa[r.siswaId] || String(r.waktuInput||'') > String(bySiswa[r.siswaId].waktuInput||'')) bySiswa[r.siswaId] = r;
+  });
+  const grouped = {};
+  Object.values(bySiswa).forEach(r=>{
+    grouped[r.kelas] = grouped[r.kelas] || [];
+    grouped[r.kelas].push(r);
+  });
+  return grouped;
+}
+function computeGuruTidakMengajarHariIni(){
+  const hari = hariIniIndo();
+  const today = todayStr();
+  const jadwalHariIni = [...DB.jadwal].filter(j=>j.hari===hari).sort((a,b)=>Number(a.jamKeMulai)-Number(b.jamKeMulai));
+  const sesiHariIni = groupKehadiranSesi(DB.kehadiran.filter(r=>r.siswaId && r.tanggal===today));
+  return jadwalHariIni.map(j=>{
+    const sesi = sesiHariIni.find(s=> s.kelas===j.kelas && Number(s.jamKeMulai)===Number(j.jamKeMulai) && Number(s.jamKeSelesai)===Number(j.jamKeSelesai) && s.namaGuru===j.namaGuru);
+    return {...j, sudahInputAbsen: !!sesi, sudahMengajar: !!(sesi && sesi.materi)};
+  }).filter(j=>!j.sudahMengajar);
+}
 
 /* ---------------- Grafik garis SVG (tren kehadiran) ---------------- */
 function lineChartSVG(data){
@@ -1356,7 +1445,6 @@ function renderDashboard(){
   const pelanggaranHariIni = DB.kedisiplinan.filter(r=>r.tanggal===today).length;
   const kebersihanHariIni = DB.kebersihan.filter(r=>r.tanggal===today);
   const avgBersih = kebersihanHariIni.length ? Math.round(kebersihanHariIni.reduce((a,b)=>a+b.skor,0)/kebersihanHariIni.length) : null;
-  const fasilitasHariIni = DB.fasilitas.filter(r=>r.tanggal===today).sort((a,b)=>Number(a.jamMulai||1)-Number(b.jamMulai||1));
   const sesiGuruHariIni = groupKehadiranSesi(DB.kehadiran.filter(r=>r.siswaId && r.tanggal===today));
   const sesiGuruMengajar = sesiGuruHariIni.filter(r=>r.materi);
   const pctMengajar = sesiGuruHariIni.length ? Math.round(sesiGuruMengajar.length/sesiGuruHariIni.length*100) : 0;
@@ -1365,8 +1453,7 @@ function renderDashboard(){
   const topSiswa = computeTopSiswaKehadiran(5);
   const trend = computeAttendanceTrend(10);
   const distribusi = computePelanggaranDistribution();
-  const isGuru = false; // dashboard disamakan dengan admin: guru melihat semua kartu & section yang sama
-  const topNilaiSiswa = computeRataNilaiSiswa({kelas:'', mapel:'', semester:'', tahun:''})[0] || null;
+  const isGuru = currentUser.role==='guru';
 
   const content = document.getElementById('content');
   content.innerHTML = `
@@ -1374,13 +1461,22 @@ function renderDashboard(){
       ${statCard(ICONS.siswa, totalSiswa, 'Total Siswa', '', 'var(--primary)')}
       ${!isGuru?statCard(ICONS.guru, totalGuru, 'Total Guru', '', 'var(--accent)'):''}
       ${statCard(ICONS.kehadiran, kehadiranDetailHariIni.length? pctHadir+'%' : '-', 'Kehadiran Hari Ini', kehadiranDetailHariIni.length? hadirCount+' dari '+kehadiranDetailHariIni.length+' tercatat' : 'Belum ada data', pctHadir>=85?'var(--success)':'var(--warn)')}
-      ${!isGuru?statCard(ICONS.star, topNilaiSiswa? topNilaiSiswa.rata : '-', 'Siswa Nilai Tertinggi', topNilaiSiswa? topNilaiSiswa.nama+' ('+topNilaiSiswa.kelas+')' : 'Belum ada data nilai', 'var(--accent)'):''}
       ${!isGuru?statCard(ICONS.disiplin, pelanggaranHariIni, 'Pelanggaran Hari Ini', 'Kedisiplinan siswa', pelanggaranHariIni>0?'var(--danger)':'var(--success)'):''}
       ${!isGuru?statCard(ICONS.bersih, avgBersih!==null? avgBersih+'%':'-', 'Rata-rata Kebersihan', avgBersih!==null? kebersihanHariIni.length+' kelas dinilai':'Belum ada data', 'var(--primary)'):''}
       ${statCard(ICONS.mengajar, sesiGuruHariIni.length? pctMengajar+'%':'-', 'Kehadiran Guru Hari Ini', sesiGuruHariIni.length? sesiGuruMengajar.length+' dari '+sesiGuruHariIni.length+' sesi ada materi':'Belum ada data', 'var(--accent)')}
       ${!isGuru?statCard(ICONS.warningTriangle, siswaPerhatian.length, 'Siswa Perlu Perhatian', 'Kehadiran / kedisiplinan', siswaPerhatian.length>0?'var(--danger)':'var(--success)'):''}
       ${statCard(ICONS.clipboard, tugasPending.length, 'Tugas Belum Selesai', 'Catatan dari guru', tugasPending.length>0?'var(--warn)':'var(--success)')}
-      ${statCard(ICONS.fasilitas, fasilitasHariIni.length, 'Penggunaan Fasilitas Hari Ini', fasilitasHariIni.length? fasilitasHariIni.length+' catatan pemakaian':'Belum ada catatan', 'var(--accent)')}
+    </div>
+
+    <div class="dash-grid-2">
+      <div class="card">
+        <div class="card-head"><div class="flex items-center gap-8"><span class="card-icon-badge" style="background:color-mix(in srgb, var(--danger) 14%, white); color:var(--danger);">${ICONS.alertUser}</span><div><h3>Siswa Tidak Hadir Hari Ini</h3><div class="card-sub">Per kelas, lengkap dengan tombol kabari orang tua via WhatsApp</div></div></div></div>
+        <div id="dash-siswa-tidak-hadir"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="flex items-center gap-8"><span class="card-icon-badge" style="background:color-mix(in srgb, #7C3AED 14%, white); color:#7C3AED;">${ICONS.bellRing}</span><div><h3>Guru Tidak Mengajar Hari Ini</h3><div class="card-sub">Dibandingkan dengan Jadwal Pelajaran hari ini</div></div></div></div>
+        <div id="dash-guru-tidak-mengajar"></div>
+      </div>
     </div>
 
     <div class="dash-grid-2">
@@ -1418,11 +1514,6 @@ function renderDashboard(){
         <div class="card-head"><div class="flex items-center gap-8"><span class="card-icon-badge" style="background:color-mix(in srgb, var(--primary) 14%, white); color:var(--primary);">${ICONS.bersih}</span><div><h3>Kebersihan Terkini per Kelas</h3><div class="card-sub">Skor penilaian kebersihan terakhir tiap kelas</div></div></div></div>
         <div id="dash-kebersihan-per-kelas"></div>
       </div>
-    </div>
-
-    <div class="card">
-      <div class="card-head"><div class="flex items-center gap-8"><span class="card-icon-badge" style="background:color-mix(in srgb, var(--accent) 16%, white); color:var(--accent);">${ICONS.fasilitas}</span><div><h3>Penggunaan Fasilitas Hari Ini</h3><div class="card-sub">Laptop, Ruang Lab, Infokus &amp; Layar IFP yang sedang/sudah dipakai hari ini</div></div></div></div>
-      <div id="dash-fasilitas-hari-ini"></div>
     </div>
 
     <div class="dash-grid-2">
@@ -1478,6 +1569,8 @@ function renderDashboard(){
   }
 
   document.getElementById('dash-trend-chart').innerHTML = trend.length>=2 ? lineChartSVG(trend) : emptyState('Belum cukup data untuk menampilkan tren kehadiran.');
+  drawDashSiswaTidakHadir();
+  drawDashGuruTidakMengajar();
 
   const donutBlock = document.getElementById('dash-donut-chart');
   if(distribusi.length===0){
@@ -1531,19 +1624,6 @@ function renderDashboard(){
         <div class="progress-track"><div class="progress-fill" style="width:${r.skor}%; background:${r.skor>=80?'var(--success)':r.skor>=50?'var(--warn)':'var(--danger)'}"></div></div>
         <div class="p-val">${r.skor}%</div></div>`).join('');
 
-  const fasilitasBlock = document.getElementById('dash-fasilitas-hari-ini');
-  if(fasilitasBlock){
-    fasilitasBlock.innerHTML = fasilitasHariIni.length===0 ? emptyState('Belum ada catatan pemakaian fasilitas hari ini.') : `<div class="table-wrap"><table><thead><tr><th>Jam Ke</th><th>Kelas</th><th>Fasilitas</th><th>Mapel</th><th>Guru</th></tr></thead><tbody>
-      ${fasilitasHariIni.map(r=>`<tr>
-        <td>${r.jamMulai===r.jamSelesai ? 'Ke-'+r.jamMulai : 'Ke-'+r.jamMulai+' s/d Ke-'+r.jamSelesai}</td>
-        <td><span class="pill pill-gray">${escapeHtml(r.kelas||'-')}</span></td>
-        <td>${(r.fasilitas||[]).map(f=>`<span class="pill pill-green" style="margin:2px 4px 2px 0;">${escapeHtml(f)}</span>`).join('') || '-'}</td>
-        <td>${escapeHtml(r.mapel||'-')}</td>
-        <td>${escapeHtml(r.guru||'-')}</td>
-      </tr>`).join('')}
-    </tbody></table></div>`;
-  }
-
   const topBlock = document.getElementById('dash-top-siswa');
   if(topSiswa.length===0){
     topBlock.innerHTML = emptyState('Belum ada cukup data absensi untuk menentukan peringkat.');
@@ -1588,12 +1668,86 @@ function renderDashboard(){
       ...DB.kedisiplinan.map(r=>({...r, _type:'Kedisiplinan', _desc:`${r.namaSiswa} - ${r.jenis}`, _icon:ICONS.disiplin})),
       ...DB.kebersihan.map(r=>({...r, _type:'Kebersihan', _desc:`Kelas ${r.kelas} - skor ${r.skor}%`, _icon:ICONS.bersih})),
       ...groupKehadiranSesi(DB.kehadiran.filter(r=>r.siswaId)).filter(r=>r.namaGuru).map(r=>({...r, _type:'Kehadiran Guru', _desc:`${r.namaGuru} - ${r.mapel} (${r.kelas}) - ${r.materi?'Mengajar':'Tanpa Materi'}`, _icon:ICONS.mengajar})),
-      ...DB.fasilitas.map(r=>({...r, _type:'Fasilitas', _desc:`${(r.fasilitas||[]).join(', ')} - ${r.kelas||'-'} (${r.guru||'-'})`, _icon:ICONS.fasilitas})),
     ].sort((a,b)=> (b.tanggal||'').localeCompare(a.tanggal||'') || (b.id||'').localeCompare(a.id||'')).slice(0,8);
     recentBlock.innerHTML = allRecent.length===0 ? emptyState('Belum ada aktivitas yang tercatat.') : `<div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Modul</th><th>Keterangan</th></tr></thead><tbody>
       ${allRecent.map(r=>`<tr><td>${formatDateShort(r.tanggal)}</td><td><span class="pill pill-gray">${r._icon} ${r._type}</span></td><td>${escapeHtml(r._desc)}</td></tr>`).join('')}
     </tbody></table></div>`;
   }
+}
+
+/* ---------------- Kartu Dashboard: Siswa Tidak Hadir & Guru Tidak Mengajar Hari Ini ---------------- */
+function buildPesanTidakHadirWa({namaSiswa, kelas, tanggal, status, keterangan}){
+  const namaSekolah = (DB.settings && DB.settings.schoolName) || 'SMA Al Azhar Plus Kota Bogor';
+  let pesan = `Assalamu'alaikum, Bapak/Ibu Orang Tua/Wali dari *${namaSiswa}* (Kelas ${kelas}).\n\n`;
+  pesan += `Kami informasikan bahwa ananda pada hari ini, ${formatDateLong(tanggal)}, tercatat *${String(status).toUpperCase()}*${keterangan?(' - '+keterangan):''} di sekolah.\n\n`;
+  pesan += 'Mohon konfirmasi kepada wali kelas apabila diperlukan. Terima kasih atas perhatian Bapak/Ibu.';
+  pesan += `\n\n— ${namaSekolah}`;
+  return pesan;
+}
+function buildPesanIngatkanGuru({namaGuru, mapel, kelas, jamLabel}){
+  const namaSekolah = (DB.settings && DB.settings.schoolName) || 'SMA Al Azhar Plus Kota Bogor';
+  let pesan = `Assalamu'alaikum, Bapak/Ibu *${namaGuru}*.\n\n`;
+  pesan += `Mengingatkan bahwa hari ini, ${formatDateLong(todayStr())}, Bapak/Ibu terjadwal mengajar *${mapel}* di kelas *${kelas}* pada jam ke-${jamLabel}, namun data kehadiran/materi pembelajaran belum diinput di sistem.\n\n`;
+  pesan += 'Mohon segera mengisi kehadiran & materi pembelajaran pada aplikasi, atau menghubungi piket apabila berhalangan hadir. Terima kasih.';
+  pesan += `\n\n— ${namaSekolah}`;
+  return pesan;
+}
+function drawDashSiswaTidakHadir(){
+  const block = document.getElementById('dash-siswa-tidak-hadir');
+  if(!block) return;
+  const grouped = computeSiswaTidakHadirHariIni();
+  const kelasKeys = Object.keys(grouped).sort();
+  if(kelasKeys.length===0){ block.innerHTML = emptyState('Alhamdulillah, belum ada siswa yang tercatat tidak hadir hari ini.'); return; }
+  block.innerHTML = kelasKeys.map(k=>{
+    const list = [...grouped[k]].sort((a,b)=>a.nama.localeCompare(b.nama));
+    return `<div class="dash-kelas-block">
+      <div class="dash-kelas-title"><span class="pill pill-gray">${escapeHtml(k)}</span><span class="dash-kelas-count">${list.length} siswa tidak hadir</span></div>
+      ${list.map(r=>{
+        const siswa = DB.siswa.find(s=>s.id===r.siswaId);
+        const hp = siswa ? (siswa.hp||'') : '';
+        const nomor = formatNomorWa(hp);
+        const cls = r.status==='Alpa'?'pill-red':'pill-amber';
+        return `<div class="dash-list-row">
+          <div class="dash-list-main"><b>${escapeHtml(r.nama)}</b><span class="pill ${cls}">${escapeHtml(r.status)}</span></div>
+          <div class="dash-list-sub">${escapeHtml(r.keterangan||'Tanpa keterangan')}</div>
+          ${nomor?`<button class="btn btn-outline btn-sm btn-wa-tidak-hadir" data-nomor="${nomor}" data-status="${escapeHtml(r.status)}" data-ket="${escapeHtml(r.keterangan||'')}" data-nama="${escapeHtml(r.nama)}" data-kelas="${escapeHtml(k)}">${ICONS.messageCircle} Kabari Ortu</button>`:`<span class="pill pill-gray">Tanpa Nomor</span>`}
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+  block.querySelectorAll('.btn-wa-tidak-hadir').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const pesan = buildPesanTidakHadirWa({namaSiswa:b.dataset.nama, kelas:b.dataset.kelas, tanggal:todayStr(), status:b.dataset.status, keterangan:b.dataset.ket});
+      kirimWaKehadiran(b.dataset.nomor, pesan);
+    });
+  });
+}
+function drawDashGuruTidakMengajar(){
+  const block = document.getElementById('dash-guru-tidak-mengajar');
+  if(!block) return;
+  const list = computeGuruTidakMengajarHariIni();
+  if(list.length===0){
+    block.innerHTML = emptyState(DB.jadwal.length===0 ? 'Belum ada data Jadwal Pelajaran. Lengkapi di menu Jadwal Pelajaran agar informasi ini akurat.' : 'Semua guru terjadwal hari ini sudah mengisi kehadiran mengajarnya.');
+    return;
+  }
+  block.innerHTML = list.map(j=>{
+    const guru = (j.guruId && DB.guru.find(g=>g.id===j.guruId)) || DB.guru.find(g=>g.nama===j.namaGuru);
+    const hp = guru ? (guru.hp||'') : '';
+    const nomor = formatNomorWa(hp);
+    const jamLabel = Number(j.jamKeMulai)===Number(j.jamKeSelesai) ? String(j.jamKeMulai) : (j.jamKeMulai+'-'+j.jamKeSelesai);
+    const waktuLabel = (j.waktuMulai && j.waktuSelesai) ? (' &bull; '+j.waktuMulai+'-'+j.waktuSelesai) : '';
+    return `<div class="dash-list-row">
+      <div class="dash-list-main"><b>${escapeHtml(j.namaGuru)}</b><span class="pill ${j.sudahInputAbsen?'pill-amber':'pill-red'}">${j.sudahInputAbsen?'Tanpa Materi':'Belum Input'}</span></div>
+      <div class="dash-list-sub">${escapeHtml(j.mapel)} &bull; Kelas ${escapeHtml(j.kelas)} &bull; Jam ke-${jamLabel}${waktuLabel}</div>
+      ${nomor?`<button class="btn btn-outline btn-sm btn-wa-ingatkan-guru" data-nomor="${nomor}" data-nama="${escapeHtml(j.namaGuru)}" data-mapel="${escapeHtml(j.mapel)}" data-kelas="${escapeHtml(j.kelas)}" data-jam="${jamLabel}">${ICONS.bellRing} Ingatkan</button>`:`<span class="pill pill-gray">Tanpa Nomor</span>`}
+    </div>`;
+  }).join('');
+  block.querySelectorAll('.btn-wa-ingatkan-guru').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const pesan = buildPesanIngatkanGuru({namaGuru:b.dataset.nama, mapel:b.dataset.mapel, kelas:b.dataset.kelas, jamLabel:b.dataset.jam});
+      kirimWaKehadiran(b.dataset.nomor, pesan);
+    });
+  });
 }
 
 /* ================= DATA SISWA (tab: Data Siswa / Nilai Siswa) ================= */
@@ -1928,6 +2082,128 @@ function openNilaiForm(existing){
 
 /* ================= DATA GURU (tab: Data Guru / Mata Pelajaran) ================= */
 let guruActiveTab = 'data';
+/* ================= JADWAL PELAJARAN (Admin kelola, Guru & Admin lihat) ================= */
+function renderJadwal(){
+  const isAdmin = currentUser.role==='admin';
+  const content = document.getElementById('content');
+  content.innerHTML = `
+    <div class="card">
+      <div class="card-head">
+        <div class="flex items-center gap-8"><span class="card-icon-badge" style="background:color-mix(in srgb, #0891B2 14%, white); color:#0891B2;">${ICONS.jadwal}</span><div><h3>Jadwal Pelajaran</h3><div class="card-sub">${DB.jadwal.length} jadwal tersimpan &bull; Hari ini: <b>${hariIniIndo()}</b></div></div></div>
+        ${isAdmin?`<button class="btn btn-primary btn-sm" id="btn-add-jadwal">${ICONS.plus} Tambah Jadwal</button>`:''}
+      </div>
+      <div class="toolbar" style="margin-bottom:14px;">
+        <select class="select-input" id="jadwal-filter-hari">
+          <option value="">Semua Hari</option>
+          ${HARI_LIST.map(h=>`<option value="${h}" ${h===hariIniIndo()?'selected':''}>${h}${h===hariIniIndo()?' (Hari Ini)':''}</option>`).join('')}
+        </select>
+        <select class="select-input" id="jadwal-filter-kelas"><option value="">Semua Kelas</option>${KELAS_LIST.map(k=>`<option value="${k}">${k}</option>`).join('')}</select>
+      </div>
+      <div id="jadwal-table"></div>
+    </div>
+  `;
+  if(isAdmin) document.getElementById('btn-add-jadwal').addEventListener('click', ()=>openJadwalForm(null));
+  ['jadwal-filter-hari','jadwal-filter-kelas'].forEach(id=> document.getElementById(id).addEventListener('change', drawJadwalTable));
+  drawJadwalTable();
+}
+function drawJadwalTable(){
+  const wrap = document.getElementById('jadwal-table');
+  if(!wrap) return;
+  const isAdmin = currentUser.role==='admin';
+  const fHari = document.getElementById('jadwal-filter-hari').value;
+  const fKelas = document.getElementById('jadwal-filter-kelas').value;
+  const hariOrder = {}; HARI_LIST.forEach((h,i)=>hariOrder[h]=i);
+  let rows = [...DB.jadwal];
+  if(fHari) rows = rows.filter(r=>r.hari===fHari);
+  if(fKelas) rows = rows.filter(r=>r.kelas===fKelas);
+  rows.sort((a,b)=> (hariOrder[a.hari]??9)-(hariOrder[b.hari]??9) || Number(a.jamKeMulai)-Number(b.jamKeMulai) || String(a.kelas).localeCompare(b.kelas));
+  if(rows.length===0){ wrap.innerHTML = emptyState('Belum ada jadwal pelajaran yang cocok dengan filter di atas.'); return; }
+  wrap.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Hari</th><th>Jam Ke</th><th>Waktu</th><th>Kelas</th><th>Mata Pelajaran</th><th>Guru</th>${isAdmin?'<th>Aksi</th>':''}</tr></thead><tbody>
+    ${rows.map(r=>{
+      const jamLabel = Number(r.jamKeMulai)===Number(r.jamKeSelesai) ? ('Ke-'+r.jamKeMulai) : ('Ke-'+r.jamKeMulai+' s.d. '+r.jamKeSelesai);
+      const waktuLabel = (r.waktuMulai && r.waktuSelesai) ? (r.waktuMulai+' - '+r.waktuSelesai) : '-';
+      const isToday = r.hari===hariIniIndo();
+      return `<tr ${isToday?'style="background:color-mix(in srgb, #22D3EE 7%, white);"':''}>
+        <td><span class="pill ${isToday?'pill-green':'pill-gray'}">${escapeHtml(r.hari)}</span></td>
+        <td>${jamLabel}</td>
+        <td style="white-space:nowrap;">${waktuLabel}</td>
+        <td><span class="pill pill-gray">${escapeHtml(r.kelas)}</span></td>
+        <td>${escapeHtml(r.mapel)}</td>
+        <td>${escapeHtml(r.namaGuru)}</td>
+        ${isAdmin?`<td><div class="row-actions"><button class="btn-icon btn-edit-jadwal" data-id="${r.id}" title="Ubah">${ICONS.edit}</button><button class="btn-icon btn-del-jadwal" data-id="${r.id}" title="Hapus">${ICONS.trash}</button></div></td>`:''}
+      </tr>`;
+    }).join('')}
+  </tbody></table></div>`;
+  if(isAdmin){
+    wrap.querySelectorAll('.btn-edit-jadwal').forEach(b=>b.addEventListener('click', ()=>{
+      const r = DB.jadwal.find(x=>x.id===b.dataset.id);
+      if(r) openJadwalForm(r);
+    }));
+    wrap.querySelectorAll('.btn-del-jadwal').forEach(b=>b.addEventListener('click', async ()=>{
+      if(!confirm('Hapus jadwal pelajaran ini?')) return;
+      await removeRecord('jadwal', b.dataset.id, drawJadwalTable);
+      if(!firebaseReady) drawJadwalTable();
+      toast('Jadwal dihapus', 'success');
+    }));
+  }
+}
+function openJadwalForm(existing){
+  const isEdit = !!existing;
+  if(DB.guru.length===0){ toast('Tambahkan data guru terlebih dahulu sebelum membuat jadwal', 'error'); return; }
+  openModal(`
+    <div class="modal-head"><h3>${isEdit?'Ubah':'Tambah'} Jadwal Pelajaran</h3><button class="btn-icon" onclick="closeModal()">${ICONS.close}</button></div>
+    <form id="jadwal-form">
+      <div class="modal-body"><div class="form-grid">
+        <div class="field"><label>Hari</label><select required id="f-hari">${HARI_LIST.map(h=>`<option value="${h}" ${existing&&existing.hari===h?'selected':''}>${h}</option>`).join('')}</select></div>
+        <div class="field"><label>Kelas</label><select required id="f-kelas">${KELAS_LIST.map(k=>`<option value="${k}" ${existing&&existing.kelas===k?'selected':''}>${k}</option>`).join('')}</select></div>
+        <div class="field full"><label>Guru</label><select required id="f-guru">${DB.guru.map(g=>`<option value="${g.id}" ${existing&&existing.guruId===g.id?'selected':''}>${escapeHtml(g.nama)}</option>`).join('')}</select></div>
+        <div class="field full"><label>Mata Pelajaran</label><select required id="f-mapel"></select></div>
+        <div class="field"><label>Jam Ke (Mulai)</label><input type="number" required id="f-jam-mulai" min="1" max="12" value="${existing?existing.jamKeMulai:1}"/></div>
+        <div class="field"><label>Jam Ke (Selesai)</label><input type="number" required id="f-jam-selesai" min="1" max="12" value="${existing?existing.jamKeSelesai:1}"/></div>
+        <div class="field"><label>Waktu Mulai</label><input type="time" required id="f-waktu-mulai" value="${existing&&existing.waktuMulai?existing.waktuMulai:'07:00'}"/></div>
+        <div class="field"><label>Waktu Selesai</label><input type="time" required id="f-waktu-selesai" value="${existing&&existing.waktuSelesai?existing.waktuSelesai:'07:45'}"/></div>
+      </div></div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-outline" onclick="closeModal()">Batal</button>
+        <button type="submit" class="btn btn-primary">Simpan</button>
+      </div>
+    </form>
+  `);
+  const guruSel = document.getElementById('f-guru');
+  const mapelSel = document.getElementById('f-mapel');
+  function fillMapel(){
+    const guru = DB.guru.find(g=>g.id===guruSel.value);
+    const list = (guru && Array.isArray(guru.mapelList) && guru.mapelList.length) ? guru.mapelList : (guru&&guru.mapel?[guru.mapel]:DB.mapel.map(m=>m.nama));
+    mapelSel.innerHTML = list.map(m=>`<option value="${escapeHtml(m)}" ${existing&&existing.mapel===m?'selected':''}>${escapeHtml(m)}</option>`).join('') || '<option value="">-</option>';
+  }
+  guruSel.addEventListener('change', fillMapel);
+  fillMapel();
+  document.getElementById('jadwal-form').addEventListener('submit', async function(e){
+    e.preventDefault();
+    const guru = DB.guru.find(g=>g.id===guruSel.value);
+    if(!guru){ toast('Pilih guru terlebih dahulu', 'error'); return; }
+    const jamMulai = Number(document.getElementById('f-jam-mulai').value);
+    const jamSelesai = Number(document.getElementById('f-jam-selesai').value);
+    if(jamSelesai < jamMulai){ toast('Jam selesai tidak boleh lebih kecil dari jam mulai', 'error'); return; }
+    const waktuMulai = document.getElementById('f-waktu-mulai').value;
+    const waktuSelesai = document.getElementById('f-waktu-selesai').value;
+    if(waktuMulai && waktuSelesai && waktuSelesai <= waktuMulai){ toast('Waktu selesai harus lebih besar dari waktu mulai', 'error'); return; }
+    const data = {
+      id: isEdit?existing.id:uid(),
+      hari: document.getElementById('f-hari').value,
+      kelas: document.getElementById('f-kelas').value,
+      guruId: guru.id, namaGuru: guru.nama,
+      mapel: mapelSel.value || '-',
+      jamKeMulai: jamMulai, jamKeSelesai: jamSelesai,
+      waktuMulai, waktuSelesai,
+    };
+    await upsertRecord('jadwal', data, isEdit, drawJadwalTable);
+    closeModal();
+    if(!firebaseReady) drawJadwalTable();
+    toast(isEdit?'Jadwal diperbarui':'Jadwal ditambahkan', 'success');
+  });
+}
+
 function renderGuru(){
   const content = document.getElementById('content');
   content.innerHTML = `
@@ -2317,14 +2593,109 @@ function drawKehadiranHistory(){
   const rows = groupKehadiranSesi(DB.kehadiran.filter(r=>r.siswaId))
     .sort((a,b)=> b.tanggal.localeCompare(a.tanggal) || b.jamKeMulai-a.jamKeMulai);
   if(rows.length===0){ wrap.innerHTML = emptyState('Belum ada riwayat kehadiran.'); return; }
-  wrap.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Kelas</th><th>Jam Ke</th><th>Guru</th><th>Mapel</th><th>Materi</th><th>Hadir</th><th>Persentase</th><th>Status Guru</th><th>Diisi Pada</th></tr></thead><tbody>
+  const bisaHapus = currentUser.role==='admin';
+  wrap.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Kelas</th><th>Jam Ke</th><th>Guru</th><th>Mapel</th><th>Materi</th><th>Hadir</th><th>Persentase</th><th>Status Guru</th><th>Diisi Pada</th><th>Notifikasi</th>${bisaHapus?'<th>Aksi</th>':''}</tr></thead><tbody>
     ${rows.map(r=>{
       const pct = Math.round(r.hadir/r.total*100);
       const jamLabel = r.jamKeMulai===r.jamKeSelesai ? ('Ke-'+r.jamKeMulai) : ('Ke-'+r.jamKeMulai+' s.d. '+r.jamKeSelesai);
       const guruStatus = !r.namaGuru ? {label:'Belum Diisi', cls:'pill-gray'} : (r.materi ? {label:'Mengajar', cls:'pill-green'} : {label:'Tanpa Materi', cls:'pill-amber'});
-      return `<tr><td>${formatDateShort(r.tanggal)}</td><td><span class="pill pill-gray">${r.kelas}</span></td><td>${jamLabel}</td><td>${escapeHtml(r.namaGuru||'-')}</td><td>${escapeHtml(r.mapel||'-')}</td><td>${escapeHtml(r.materi||'-')}</td><td>${r.hadir}/${r.total}</td><td><span class="pill ${pct>=85?'pill-green':pct>=60?'pill-amber':'pill-red'}">${pct}%</span></td><td><span class="pill ${guruStatus.cls}">${guruStatus.label}</span></td><td style="color:var(--muted); font-size:12px; white-space:nowrap;">${formatWaktu(r.waktuInput)}</td></tr>`;
+      const sesiKey = r.tanggal+'|'+r.kelas+'|'+r.jamKeMulai+'|'+r.jamKeSelesai;
+      return `<tr><td>${formatDateShort(r.tanggal)}</td><td><span class="pill pill-gray">${r.kelas}</span></td><td>${jamLabel}</td><td>${escapeHtml(r.namaGuru||'-')}</td><td>${escapeHtml(r.mapel||'-')}</td><td>${escapeHtml(r.materi||'-')}</td><td>${r.hadir}/${r.total}</td><td><span class="pill ${pct>=85?'pill-green':pct>=60?'pill-amber':'pill-red'}">${pct}%</span></td><td><span class="pill ${guruStatus.cls}">${guruStatus.label}</span></td><td style="color:var(--muted); font-size:12px; white-space:nowrap;">${formatWaktu(r.waktuInput)}</td><td><button class="btn btn-outline btn-sm btn-wa-sesi" data-key="${escapeHtml(sesiKey)}" title="Kirim notifikasi WhatsApp ke orang tua kelas ini">${ICONS.messageCircle} Kirim WA</button></td>${bisaHapus?`<td><div class="row-actions"><button class="btn-icon btn-del-kehadiran-sesi" data-key="${escapeHtml(sesiKey)}" title="Hapus data kehadiran sesi ini">${ICONS.trash}</button></div></td>`:''}</tr>`;
     }).join('')}
   </tbody></table></div>`;
+  wrap.querySelectorAll('.btn-wa-sesi').forEach(b=>{
+    b.addEventListener('click', ()=> openKirimWaKehadiranModal(b.dataset.key));
+  });
+  if(bisaHapus){
+    wrap.querySelectorAll('.btn-del-kehadiran-sesi').forEach(b=>{
+      b.addEventListener('click', async ()=>{
+        if(!confirm('Apakah Anda yakin ingin menghapus data kehadiran ini?')) return;
+        const [tanggal, kelas, jkm, jks] = b.dataset.key.split('|');
+        const removeIds = DB.kehadiran.filter(r=> r.siswaId && r.tanggal===tanggal && r.kelas===kelas && String(Number(r.jamKeMulai||r.jamKe||1))===jkm && String(Number(r.jamKeSelesai||r.jamKe||1))===jks).map(r=>r.id);
+        if(removeIds.length===0){ toast('Data kehadiran tidak ditemukan (mungkin sudah dihapus)', 'error'); drawKehadiranHistory(); return; }
+        try{
+          await bulkUpsert('kehadiran', [], removeIds, ()=>{ drawKehadiranHistory(); drawKehadiranRekapSiswaTable(); if(document.getElementById('kh-form-area')) drawKehadiranForm(); });
+          toast('Data kehadiran berhasil dihapus', 'success');
+        }catch(err){
+          toast('Gagal menghapus data kehadiran', 'error');
+        }
+      });
+    });
+  }
+}
+
+/* ---------------- Notifikasi WhatsApp Orang Tua (Kehadiran) ----------------
+   Memakai tautan resmi wa.me (tanpa API berbayar): setiap klik "Kirim WA" membuka
+   WhatsApp dengan pesan yang sudah disusun ke nomor orang tua siswa terkait.
+   Guru/admin tetap perlu menekan tombol kirim di WhatsApp sebagai konfirmasi akhir. */
+function formatNomorWa(hp){
+  if(!hp) return null;
+  let d = String(hp).replace(/[^0-9]/g,'');
+  if(!d) return null;
+  if(d.startsWith('0')) d = '62'+d.slice(1);
+  else if(!d.startsWith('62')) d = '62'+d;
+  return d.length>=10 && d.length<=15 ? d : null;
+}
+function buildPesanKehadiranWa({namaSiswa, kelas, tanggal, jamLabel, mapel, status, keterangan}){
+  const namaSekolah = (DB.settings && DB.settings.schoolName) || 'SMA Al Azhar Plus Kota Bogor';
+  const statusText = (status||'-').toUpperCase();
+  let pesan = `Assalamu'alaikum, Bapak/Ibu Orang Tua/Wali dari *${namaSiswa}* (Kelas ${kelas}).\n\n`;
+  pesan += `Kami informasikan kehadiran ananda pada:\n`;
+  pesan += `Tanggal: ${formatDateShort(tanggal)}\n`;
+  pesan += (mapel ? `Mata Pelajaran: ${mapel} (Jam ke-${jamLabel})\n` : `Jam ke-${jamLabel}\n`);
+  pesan += `Status: *${statusText}*${keterangan?(' - '+keterangan):''}\n\n`;
+  pesan += (status==='Hadir') ? 'Terima kasih atas perhatian dan dukungan Bapak/Ibu.' : 'Mohon konfirmasi kepada wali kelas apabila diperlukan.';
+  pesan += `\n\n— ${namaSekolah}`;
+  return pesan;
+}
+function kirimWaKehadiran(nomor, pesan){
+  window.open('https://wa.me/'+nomor+'?text='+encodeURIComponent(pesan), '_blank');
+}
+function openKirimWaKehadiranModal(sesiKey){
+  const [tanggal, kelas, jkm, jks] = sesiKey.split('|');
+  const records = DB.kehadiran.filter(r=> r.siswaId && r.tanggal===tanggal && r.kelas===kelas && String(Number(r.jamKeMulai||r.jamKe||1))===jkm && String(Number(r.jamKeSelesai||r.jamKe||1))===jks);
+  if(records.length===0){ toast('Data kehadiran sesi ini tidak ditemukan (mungkin sudah dihapus)', 'error'); return; }
+  const jamLabel = jkm===jks ? jkm : (jkm+' s.d. '+jks);
+  const mapel = records[0].mapel || '';
+  const sentKey = 'wa-notif-sent-'+sesiKey;
+  let sentIds = [];
+  try{ sentIds = JSON.parse(localStorage.getItem(sentKey)||'[]'); }catch(e){ sentIds = []; }
+  const rows = [...records].sort((a,b)=>a.nama.localeCompare(b.nama));
+  openModal(`
+    <div class="modal-head"><h3>Notifikasi WhatsApp — Kehadiran</h3><button class="btn-icon" onclick="closeModal()">${ICONS.close}</button></div>
+    <div class="modal-body">
+      <div class="card-sub" style="margin-bottom:14px;">Kelas <b>${escapeHtml(kelas)}</b> &bull; ${formatDateShort(tanggal)} &bull; Jam ke-${jamLabel}${mapel?(' &bull; '+escapeHtml(mapel)):''}</div>
+      <div class="table-wrap"><table><thead><tr><th>Nama</th><th>Status</th><th>No HP Ortu</th><th></th></tr></thead><tbody>
+        ${rows.map(r=>{
+          const siswa = DB.siswa.find(s=>s.id===r.siswaId);
+          const hp = siswa ? (siswa.hp||'') : '';
+          const nomor = formatNomorWa(hp);
+          const cls = r.status==='Hadir'?'pill-green':(r.status==='Alpa'?'pill-red':'pill-amber');
+          const sudah = sentIds.includes(r.siswaId);
+          return `<tr data-sid="${r.siswaId}">
+            <td>${escapeHtml(r.nama)}</td>
+            <td><span class="pill ${cls}">${escapeHtml(r.status)}</span></td>
+            <td style="font-size:12.5px;">${nomor?escapeHtml(hp):'<span style="color:var(--muted)">Belum ada nomor</span>'}</td>
+            <td>${nomor?`<button class="btn btn-sm ${sudah?'btn-outline':'btn-primary'} btn-wa-kirim" data-sid="${r.siswaId}" data-nomor="${nomor}">${sudah?(ICONS.check+' Terkirim'):'Kirim WA'}</button>`:'<span class="pill pill-gray">Tanpa Nomor</span>'}</td>
+          </tr>`;
+        }).join('')}
+      </tbody></table></div>
+      <p style="font-size:11.5px; color:var(--muted); margin-top:10px; line-height:1.6;">Tombol "Kirim WA" membuka WhatsApp dengan pesan yang sudah disiapkan ke nomor orang tua terkait — Anda tetap perlu menekan tombol kirim di WhatsApp. Siswa tanpa nomor HP orang tua perlu dilengkapi dulu di menu Data Siswa.</p>
+    </div>
+    <div class="modal-foot"><button class="btn btn-outline" onclick="closeModal()">Tutup</button></div>
+  `);
+  document.querySelectorAll('.btn-wa-kirim').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const sid = b.dataset.sid;
+      const rec = records.find(r=>r.siswaId===sid);
+      if(!rec) return;
+      const pesan = buildPesanKehadiranWa({namaSiswa:rec.nama, kelas, tanggal, jamLabel, mapel, status:rec.status, keterangan:rec.keterangan});
+      kirimWaKehadiran(b.dataset.nomor, pesan);
+      if(!sentIds.includes(sid)){ sentIds.push(sid); try{ localStorage.setItem(sentKey, JSON.stringify(sentIds)); }catch(e){} }
+      b.innerHTML = ICONS.check+' Terkirim';
+      b.classList.remove('btn-primary'); b.classList.add('btn-outline');
+    });
+  });
 }
 
 /* ================= KEHADIRAN SISWA (Guru - input ringkas jumlah hadir) ================= */
@@ -2580,103 +2951,6 @@ function openBersihForm(){
     closeModal();
     if(!firebaseReady) drawBersihTable();
     toast('Penilaian kebersihan tersimpan (skor '+skor+'%)', 'success');
-  });
-}
-
-/* ================= PENGGUNAAN FASILITAS ================= */
-/* Mencatat pemakaian fasilitas sekolah (Laptop, Ruang Lab, Infokus, Layar IFP) oleh guru saat mengajar */
-function renderFasilitas(){
-  const content = document.getElementById('content');
-  content.innerHTML = `
-    <div class="card">
-      <div class="card-head">
-        <div class="flex items-center gap-8"><span class="card-icon-badge" style="background:var(--primary-light); color:var(--primary);">${ICONS.fasilitas}</span><div><h3>Penggunaan Fasilitas</h3><div class="card-sub">Catatan pemakaian Laptop, Ruang Lab, Infokus, dan Layar IFP saat mengajar</div></div></div>
-        <button class="btn btn-primary btn-sm" id="btn-add-fasilitas">${ICONS.plus} Catat Pemakaian</button>
-      </div>
-      <div id="fasilitas-table"></div>
-    </div>
-  `;
-  document.getElementById('btn-add-fasilitas').addEventListener('click', ()=>openFasilitasForm());
-  drawFasilitasTable();
-}
-function drawFasilitasTable(){
-  const wrap = document.getElementById('fasilitas-table');
-  const rows = [...DB.fasilitas].sort((a,b)=> b.tanggal.localeCompare(a.tanggal) || Number(b.jamMulai||1)-Number(a.jamMulai||1));
-  const header = `<div class="toolbar"><button class="btn btn-outline btn-sm" id="btn-sync-fasilitas">${ICONS.cloud} Kirim ke Sheet</button></div>`;
-  if(rows.length===0){ wrap.innerHTML = header+emptyState('Belum ada catatan pemakaian fasilitas.'); }
-  else{
-    wrap.innerHTML = header + `<div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Kelas</th><th>Jam Ke</th><th>Fasilitas</th><th>Mapel</th><th>Guru</th><th>Catatan</th><th></th></tr></thead><tbody>
-      ${rows.map(r=>`<tr>
-        <td>${formatDateShort(r.tanggal)}</td><td><span class="pill pill-gray">${escapeHtml(r.kelas||'-')}</span></td>
-        <td>${r.jamMulai===r.jamSelesai ? 'Ke-'+r.jamMulai : 'Ke-'+r.jamMulai+' s/d Ke-'+r.jamSelesai}</td>
-        <td>${(r.fasilitas||[]).map(f=>`<span class="pill pill-green" style="margin:2px 4px 2px 0;">${escapeHtml(f)}</span>`).join('') || '-'}</td>
-        <td>${escapeHtml(r.mapel||'-')}</td>
-        <td>${escapeHtml(r.guru||'-')}</td>
-        <td>${escapeHtml(r.catatan||'-')}</td>
-        <td><div class="row-actions"><button class="btn-icon btn-del-fasilitas" data-id="${r.id}">${ICONS.trash}</button></div></td>
-      </tr>`).join('')}
-    </tbody></table></div>`;
-  }
-  const syncBtn = document.getElementById('btn-sync-fasilitas');
-  if(syncBtn) syncBtn.addEventListener('click', ()=>syncToSheet('Penggunaan Fasilitas', DB.fasilitas.map(r=>({
-    Tanggal:r.tanggal, Kelas:r.kelas||'', 'Jam Mulai':r.jamMulai, 'Jam Selesai':r.jamSelesai,
-    Fasilitas:(r.fasilitas||[]).join(', '), Mapel:r.mapel||'', Guru:r.guru||'', Catatan:r.catatan||''
-  }))));
-  wrap.querySelectorAll('.btn-del-fasilitas').forEach(b=>b.addEventListener('click', async ()=>{
-    if(confirm('Hapus catatan pemakaian fasilitas ini?')){
-      await removeRecord('fasilitas', b.dataset.id, drawFasilitasTable);
-      if(!firebaseReady) drawFasilitasTable();
-      toast('Catatan dihapus', 'success');
-    }
-  }));
-}
-function openFasilitasForm(){
-  openModal(`
-    <div class="modal-head"><h3>Catat Pemakaian Fasilitas</h3><button class="btn-icon" onclick="closeModal()">${ICONS.close}</button></div>
-    <form id="fasilitas-form">
-      <div class="modal-body">
-        <div class="form-grid">
-          <div class="field"><label>Tanggal</label><input type="date" required id="f-tanggal" value="${todayStr()}"/></div>
-          <div class="field"><label>Kelas</label><select required id="f-kelas"><option value="">- Pilih Kelas -</option>${KELAS_LIST.map(k=>`<option value="${k}">${k}</option>`).join('')}</select></div>
-          <div class="field"><label>Dipakai dari Jam Ke</label><select id="f-jam-mulai">${JAM_KE_LIST.map(j=>`<option value="${j}">Jam Ke-${j}</option>`).join('')}</select></div>
-          <div class="field"><label>Sampai Jam Ke</label><select id="f-jam-selesai">${JAM_KE_LIST.map(j=>`<option value="${j}">Jam Ke-${j}</option>`).join('')}</select></div>
-          <div class="field"><label>Mata Pelajaran</label><select id="f-mapel"><option value="">- Pilih Mapel -</option>${mapelNames().map(m=>`<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('')}</select></div>
-          <div class="field"><label>Nama Guru</label>
-            <input required id="f-guru" list="guru-datalist-fasilitas" placeholder="Ketik atau pilih nama guru" value="${currentUser.role==='guru'?escapeHtml(currentUser.name):''}"/>
-            <datalist id="guru-datalist-fasilitas">${DB.guru.map(g=>`<option value="${escapeHtml(g.nama)}">`).join('')}</datalist>
-          </div>
-        </div>
-        <div style="margin-top:16px;">
-          <label style="display:block; font-size:12.5px; font-weight:600; color:var(--muted); margin-bottom:10px; text-transform:uppercase; letter-spacing:0.4px;">Fasilitas yang Dipakai (boleh pilih lebih dari satu)</label>
-          ${FASILITAS_LIST.map((item,i)=>`<label class="checklist-item" id="fi-${i}"><input type="checkbox" class="fasilitas-check" data-val="${escapeHtml(item)}"/><span>${item}</span></label>`).join('')}
-        </div>
-        <div class="field full" style="margin-top:12px;"><label>Catatan Tambahan (opsional)</label><textarea id="f-catatan" rows="2" placeholder="Contoh: Layar IFP di kelas XI IPA 1 sedikit redup"></textarea></div>
-      </div>
-      <div class="modal-foot">
-        <button type="button" class="btn btn-outline" onclick="closeModal()">Batal</button>
-        <button type="submit" class="btn btn-primary">Simpan Catatan</button>
-      </div>
-    </form>
-  `);
-  document.querySelectorAll('.fasilitas-check').forEach(cb=>{
-    cb.addEventListener('change', function(){ this.closest('.checklist-item').classList.toggle('checked', this.checked); });
-  });
-  document.getElementById('fasilitas-form').addEventListener('submit', async function(e){
-    e.preventDefault();
-    const dipilih = Array.from(document.querySelectorAll('.fasilitas-check')).filter(c=>c.checked).map(c=>c.dataset.val);
-    if(dipilih.length===0){ toast('Pilih minimal 1 fasilitas yang dipakai', 'error'); return; }
-    const jamMulai = Number(document.getElementById('f-jam-mulai').value)||1;
-    const jamSelesai = Number(document.getElementById('f-jam-selesai').value)||jamMulai;
-    const data = {
-      id:uid(), tanggal: document.getElementById('f-tanggal').value, kelas: document.getElementById('f-kelas').value,
-      jamMulai, jamSelesai: jamSelesai<jamMulai?jamMulai:jamSelesai,
-      mapel: document.getElementById('f-mapel').value, guru: document.getElementById('f-guru').value.trim(),
-      fasilitas: dipilih, catatan: document.getElementById('f-catatan').value.trim(),
-    };
-    await upsertRecord('fasilitas', data, false, drawFasilitasTable);
-    closeModal();
-    if(!firebaseReady) drawFasilitasTable();
-    toast('Pemakaian fasilitas tercatat', 'success');
   });
 }
 
@@ -2994,7 +3268,13 @@ async function renderPencapaian(){
 
   content.innerHTML = `
     <div class="card">
-      <div class="card-head"><div class="flex items-center gap-8"><span class="card-icon-badge">${ICONS.siswa}</span><div><h3>Pilih Nama Siswa</h3><div class="card-sub">${isSiswaRole?'Halaman ini hanya menampilkan pencapaianmu sendiri':'Hanya nama siswa yang dapat diubah — data pencapaian di bawah bersifat lihat saja'}</div></div></div></div>
+      <div class="card-head">
+        <div class="flex items-center gap-8"><span class="card-icon-badge">${ICONS.siswa}</span><div><h3>Pilih Nama Siswa</h3><div class="card-sub">${isSiswaRole?'Halaman ini hanya menampilkan pencapaianmu sendiri':'Hanya nama siswa yang dapat diubah — data pencapaian di bawah bersifat lihat saja'}</div></div></div>
+        <div class="flex gap-8">
+          <button class="btn btn-outline btn-sm" id="btn-print-pencapaian">${ICONS.printer} Cetak</button>
+          <button class="btn btn-outline btn-sm" id="btn-download-pencapaian">${ICONS.download} Unduh PDF</button>
+        </div>
+      </div>
       <div class="field" style="max-width:360px; margin-bottom:0;">
         <label>Nama Siswa</label>
         <select id="pencapaian-siswa-select" ${isSiswaRole?'disabled':''}>
@@ -3012,6 +3292,8 @@ async function renderPencapaian(){
       drawPencapaianDetail(pencapaianSelectedId, isSiswaRole);
     });
   }
+  document.getElementById('btn-print-pencapaian').addEventListener('click', ()=> window.print());
+  document.getElementById('btn-download-pencapaian').addEventListener('click', ()=> downloadPencapaianPdf());
   drawPencapaianDetail(selectedId, isSiswaRole);
 }
 
@@ -3051,11 +3333,28 @@ function drawPencapaianDetail(siswaId, isSiswaRole){
   // Catatan tugas untuk kelas siswa ini
   const tugasKelas = [...DB.tugas].filter(t=>t.kelas===siswa.kelas).sort((a,b)=>(a.deadline||'').localeCompare(b.deadline||''));
 
+  const namaSekolah = (DB.settings && DB.settings.schoolName) || 'SMA Al Azhar Plus Kota Bogor';
+  const tanggalCetak = new Date().toLocaleString('id-ID', {dateStyle:'long', timeStyle:'short'});
+  const ringkasanTeks = 'Rata-rata nilai '+(rataKeseluruhan!==null?rataKeseluruhan:'belum tersedia')+
+    ', persentase kehadiran '+(kehadiranPct!==null?kehadiranPct+'%':'belum tersedia')+
+    ', dan akumulasi poin pelanggaran sebesar '+poin+' poin.';
+
   wrap.innerHTML = `
+  <div id="pencapaian-print-area">
+    <div class="print-header">
+      <div class="ph-school">${escapeHtml(namaSekolah)}</div>
+      <div class="ph-title">Laporan Pencapaian Siswa</div>
+      <div class="ph-meta">Dicetak pada: ${tanggalCetak}</div>
+    </div>
+
     <div class="card" style="text-align:center; padding:32px 20px;">
       <div class="user-avatar" style="width:64px; height:64px; font-size:22px; margin:0 auto 14px; background:var(--accent);">${initials(siswa.nama)}</div>
       <h2 style="font-family:var(--font-display); font-size:20px;">${escapeHtml(siswa.nama)}</h2>
       <div style="color:var(--muted); font-size:13px; margin-top:4px;">${escapeHtml(siswa.kelas||'-')} &bull; NIS ${escapeHtml(siswa.nis||'-')}</div>
+    </div>
+
+    <div class="card" style="padding:16px 20px;">
+      <div class="card-sub" style="font-size:12.8px; line-height:1.6; color:var(--ink);"><b>Ringkasan Pencapaian:</b> ${ringkasanTeks}</div>
     </div>
 
     <div class="stat-grid">
@@ -3086,7 +3385,63 @@ function drawPencapaianDetail(siswaId, isSiswaRole){
     </div>
 
     <div class="storage-note">${ICONS.star}<div>${isSiswaRole?'Halaman ini hanya menampilkan pencapaianmu sendiri. Untuk pertanyaan tentang nilai atau catatan sekolah lainnya, silakan hubungi wali kelas.':'Semua data pada halaman ini bersifat lihat saja (tidak dapat diedit). Untuk mengubah data, gunakan menu Data Siswa, Nilai, Kehadiran, Kedisiplinan, atau Catatan Tugas.'}</div></div>
+  </div>
   `;
+}
+
+/* ---------------- Cetak & Unduh PDF (Pencapaian Saya) ----------------
+   Cetak memakai fitur print bawaan browser (CSS @media print men-scope tampilan
+   hanya ke #pencapaian-print-area). Unduh PDF memakai html2canvas + jsPDF yang
+   dimuat sesuai kebutuhan (lazy-loaded) agar halaman tetap ringan saat awal dibuka. */
+function loadExternalScript(src){
+  return new Promise((resolve, reject)=>{
+    if(document.querySelector('script[src="'+src+'"]')){ resolve(); return; }
+    const el = document.createElement('script');
+    el.src = src; el.onload = ()=>resolve(); el.onerror = ()=>reject(new Error('Gagal memuat '+src));
+    document.head.appendChild(el);
+  });
+}
+async function ensurePdfLibs(){
+  if(!window.html2canvas){ await loadExternalScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'); }
+  if(!window.jspdf){ await loadExternalScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'); }
+}
+async function downloadPencapaianPdf(){
+  const btn = document.getElementById('btn-download-pencapaian');
+  const area = document.getElementById('pencapaian-print-area');
+  if(!area){ toast('Data pencapaian belum siap untuk diunduh', 'error'); return; }
+  const siswa = DB.siswa.find(s=>s.id===pencapaianSelectedId);
+  const originalLabel = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = '<span class="icon-spin">'+ICONS.spinner+'</span> Menyiapkan PDF...';
+  try{
+    await ensurePdfLibs();
+    document.body.classList.add('pdf-export-mode');
+    const canvas = await window.html2canvas(area, {scale:2, backgroundColor:'#ffffff', useCORS:true});
+    document.body.classList.remove('pdf-export-mode');
+    const imgData = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = 210, pageHeight = 297;
+    const imgWidth = pageWidth;
+    const imgHeight = canvas.height * imgWidth / canvas.width;
+    let heightLeft = imgHeight, position = 0;
+    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+    while(heightLeft > 0){
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+    const namaFile = 'Pencapaian-'+(siswa?siswa.nama.replace(/[^a-z0-9]+/gi,'_'):'Siswa')+'-'+todayStr()+'.pdf';
+    pdf.save(namaFile);
+    toast('Laporan PDF berhasil diunduh', 'success');
+  }catch(err){
+    console.error('Gagal membuat PDF:', err);
+    document.body.classList.remove('pdf-export-mode');
+    toast('Gagal membuat file PDF. Periksa koneksi internet Anda atau gunakan tombol Cetak.', 'error');
+  }finally{
+    btn.disabled = false; btn.innerHTML = originalLabel;
+  }
 }
 
 /* ================= PENGATURAN ================= */
@@ -3157,11 +3512,6 @@ function renderPengaturan(){
         <label class="btn btn-outline btn-sm" for="import-file-input" style="margin:0;">${ICONS.cloud} Impor Data dari File</label>
         <input type="file" id="import-file-input" accept="application/json" style="display:none;"/>
       </div>
-      ${firebaseReady?`
-      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
-        <p style="font-size:12.8px; color:var(--muted); margin-bottom:10px; line-height:1.6;">Punya data siswa/guru/dsb yang diinput <b>sebelum</b> database online disambungkan (atau sempat diinput saat koneksi terputus)? Data itu masih tersimpan di komputer ini saja. Klik tombol di bawah untuk mengunggahnya ke Database Online supaya muncul juga di perangkat lain.</p>
-        <button class="btn btn-primary btn-sm" id="btn-migrate-local">${ICONS.wifi} Unggah Data Lokal Komputer Ini ke Online</button>
-      </div>`:''}
     </div>
 
     <div class="card">
@@ -3186,7 +3536,6 @@ function renderPengaturan(){
   document.getElementById('btn-save-school').addEventListener('click', async ()=>{
     DB.settings.schoolName = document.getElementById('set-school-name').value.trim() || 'SMA Al Azhar Plus Kota Bogor';
     await storageSet('app-settings', DB.settings);
-    await pushSettingsToFirebase();
     updateSchoolNameUI();
     toast('Nama sekolah disimpan', 'success');
   });
@@ -3197,14 +3546,12 @@ function renderPengaturan(){
       accent: document.getElementById('col-accent').value, bg: document.getElementById('col-bg').value,
     };
     await storageSet('app-settings', DB.settings);
-    await pushSettingsToFirebase();
     applyTheme(DB.settings.theme);
     toast('Tema warna disimpan', 'success');
   });
   document.getElementById('btn-reset-theme').addEventListener('click', async ()=>{
     DB.settings.theme = {...DEFAULT_THEME};
     await storageSet('app-settings', DB.settings);
-    await pushSettingsToFirebase();
     applyTheme(DB.settings.theme);
     renderPengaturan();
     toast('Tema dikembalikan ke default', 'success');
@@ -3214,7 +3561,6 @@ function renderPengaturan(){
       const t = THEME_PRESETS[el.dataset.idx];
       DB.settings.theme = {...t};
       await storageSet('app-settings', DB.settings);
-      await pushSettingsToFirebase();
       applyTheme(t);
       renderPengaturan();
       toast('Preset tema diterapkan', 'success');
@@ -3263,31 +3609,13 @@ function renderPengaturan(){
   document.getElementById('btn-save-sheeturl').addEventListener('click', async ()=>{
     DB.settings.sheetUrl = document.getElementById('set-sheet-url').value.trim();
     await storageSet('app-settings', DB.settings);
-    await pushSettingsToFirebase();
     toast('URL Google Sheet disimpan', 'success');
-  });
-
-  const migrateBtn = document.getElementById('btn-migrate-local');
-  if(migrateBtn) migrateBtn.addEventListener('click', async ()=>{
-    if(!confirm('Ini akan mengunggah semua data (siswa, guru, kehadiran, dll) yang tersimpan di localStorage komputer ini ke Database Online. Data dengan ID yang sama di online akan ditimpa oleh data dari komputer ini. Lanjutkan?')) return;
-    migrateBtn.disabled = true;
-    migrateBtn.textContent = 'Mengunggah...';
-    try{
-      const count = await migrateLocalDataToFirebase();
-      toast(count>0 ? ('Berhasil mengunggah '+count+' data ke online.') : 'Tidak ada data lokal yang perlu diunggah.', 'success');
-    }catch(err){
-      console.error('Gagal migrasi data lokal ke Firebase:', err);
-      toast('Gagal mengunggah data: '+(err&&err.message?err.message:'periksa Security Rules Firebase Anda'), 'error');
-    }finally{
-      migrateBtn.disabled = false;
-      migrateBtn.innerHTML = ICONS.wifi+' Unggah Data Lokal Komputer Ini ke Online';
-    }
   });
 
   document.getElementById('btn-export-data').addEventListener('click', ()=>{
     const backup = {
       exportedAt: new Date().toISOString(), siswa: DB.siswa, guru: DB.guru, kehadiran: DB.kehadiran,
-      kedisiplinan: DB.kedisiplinan, kebersihan: DB.kebersihan, fasilitas: DB.fasilitas, mengajar: DB.mengajar, tugas: DB.tugas, nilai: DB.nilai, mapel: DB.mapel, settings: DB.settings,
+      kedisiplinan: DB.kedisiplinan, kebersihan: DB.kebersihan, mengajar: DB.mengajar, tugas: DB.tugas, nilai: DB.nilai, mapel: DB.mapel, settings: DB.settings,
     };
     const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
     const a = document.createElement('a');
@@ -3304,15 +3632,14 @@ function renderPengaturan(){
         const data = JSON.parse(evt.target.result);
         if(!confirm('Impor data ini akan MENGGANTI seluruh data yang tersimpan saat ini di perangkat ini. Lanjutkan?')) return;
         DB.siswa = data.siswa || []; DB.guru = data.guru || []; DB.kehadiran = data.kehadiran || [];
-        DB.kedisiplinan = data.kedisiplinan || []; DB.kebersihan = data.kebersihan || []; DB.fasilitas = data.fasilitas || [];
+        DB.kedisiplinan = data.kedisiplinan || []; DB.kebersihan = data.kebersihan || [];
         DB.mengajar = data.mengajar || []; DB.tugas = data.tugas || []; DB.nilai = data.nilai || []; DB.mapel = data.mapel || []; DB.settings = data.settings || DB.settings;
         Promise.all([
           storageSet('siswa-list', DB.siswa), storageSet('guru-list', DB.guru),
           storageSet('kehadiran-records', DB.kehadiran), storageSet('kedisiplinan-records', DB.kedisiplinan),
-          storageSet('kebersihan-records', DB.kebersihan), storageSet('fasilitas-records', DB.fasilitas), storageSet('mengajar-records', DB.mengajar),
+          storageSet('kebersihan-records', DB.kebersihan), storageSet('mengajar-records', DB.mengajar),
           storageSet('tugas-records', DB.tugas), storageSet('nilai-records', DB.nilai), storageSet('mapel-list', DB.mapel), storageSet('app-settings', DB.settings),
-        ]).then(async ()=>{
-          if(firebaseReady) await pushSettingsToFirebase();
+        ]).then(()=>{
           applyTheme(DB.settings.theme || DEFAULT_THEME);
           toast('Data berhasil diimpor', 'success');
           renderPengaturan();
@@ -3361,26 +3688,6 @@ async function syncToSheet(sheetName, rows){
 
 boot();
 
-/* ---------------- Auto Update Checker ---------------- */
-/* Mengecek versi terbaru langsung dari server (bypass cache browser & CDN),
-   lalu memaksa reload otomatis jika ada versi baru. */
-(function checkForUpdate(){
-  try{
-    var CURRENT_VERSION = document.querySelector('meta[name="app-version"]').getAttribute('content');
-    var url = window.location.pathname + '?_cb=' + Date.now();
-    fetch(url, { cache: 'no-store' })
-      .then(function(r){ return r.text(); })
-      .then(function(html){
-        var m = html.match(/<meta name="app-version" content="([^"]+)"/);
-        if(m && m[1] && m[1] !== CURRENT_VERSION){
-          var target = window.location.pathname + window.location.search +
-            (window.location.search ? '&' : '?') + 'v=' + Date.now();
-          window.location.replace(target);
-        }
-      })
-      .catch(function(){ /* diam saja jika gagal cek, tidak mengganggu pengguna */ });
-  }catch(e){}
-})();
 </script>
 </body>
 </html>
