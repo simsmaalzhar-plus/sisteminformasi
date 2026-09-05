@@ -245,6 +245,17 @@ input, select, textarea{font-family:inherit; font-size:14px;}
 .stat-card .stat-value{font-family:var(--font-display); font-size:26px; font-weight:800; line-height:1;}
 .stat-card .stat-label{font-size:12.5px; color:var(--muted); margin-top:6px; font-weight:500;}
 .stat-card .stat-sub{font-size:11.5px; margin-top:8px; font-weight:600;}
+.stat-card-link{cursor:pointer;}
+.stat-card-link:hover{border-color:var(--primary);}
+.stat-card-link:focus-visible{outline:2px solid var(--primary); outline-offset:2px;}
+.stat-card-link::after{
+  content:''; position:absolute; top:16px; right:16px; width:16px; height:16px;
+  background:var(--muted); opacity:0.35;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4'%3E%3Cpath d='M7 17 17 7M8 7h9v9'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4'%3E%3Cpath d='M7 17 17 7M8 7h9v9'/%3E%3C/svg%3E") center/contain no-repeat;
+  transition:opacity .15s ease, transform .15s ease;
+}
+.stat-card-link:hover::after{opacity:0.9; transform:translate(2px,-2px);}
 
 .card{
   background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
@@ -371,10 +382,19 @@ textarea.code-box{
 .menu-toggle{display:none; background:transparent; border:none; padding:6px;}
 
 /* ================= DASHBOARD EXTRAS ================= */
-.dash-kelas-block{margin-bottom:16px;}
+.dash-scroll-wrap{max-height:360px; overflow-y:auto; padding-right:4px; margin-right:-4px;}
+.dash-scroll-wrap::-webkit-scrollbar{width:6px;}
+.dash-scroll-wrap::-webkit-scrollbar-thumb{background:var(--border); border-radius:6px;}
+.dash-kelas-block{margin-bottom:10px; border:1px solid var(--border); border-radius:12px; overflow:hidden;}
 .dash-kelas-block:last-child{margin-bottom:0;}
-.dash-kelas-title{display:flex; align-items:center; gap:10px; margin-bottom:8px;}
-.dash-kelas-count{font-size:11.5px; color:var(--muted); font-weight:600;}
+.dash-kelas-block summary{list-style:none; cursor:pointer;}
+.dash-kelas-block summary::-webkit-details-marker{display:none;}
+.dash-kelas-title{display:flex; align-items:center; gap:10px; padding:11px 12px; background:var(--surface-alt, #F8FAF9);}
+.dash-kelas-block[open] .dash-kelas-title{border-bottom:1px solid var(--border);}
+.dash-kelas-count{font-size:11.5px; color:var(--muted); font-weight:600; flex:1;}
+.dash-caret{width:16px; height:16px; color:var(--muted); transition:transform .2s ease; flex-shrink:0;}
+.dash-kelas-block[open] .dash-caret{transform:rotate(180deg);}
+.dash-kelas-body{padding:2px 12px;}
 .dash-list-row{
   display:flex; align-items:center; flex-wrap:wrap; gap:6px 12px;
   padding:10px 4px; border-bottom:1px solid var(--border);
@@ -720,6 +740,7 @@ const ICONS = {
   messageCircle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"/></svg>',
   jadwal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h2M8 17h6M14 14h2"/></svg>',
   bellRing: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M4 4 2 6M20 4l2 2"/></svg>',
+  chevronDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="6 9 12 15 18 9"/></svg>',
 };
 
 /* ---------------- Konstanta ---------------- */
@@ -1269,7 +1290,7 @@ function navigate(page){
   content.innerHTML = '';
   const renderers = {
     dashboard: renderDashboard, siswa: renderSiswa, nilai: renderNilai, guru: renderGuru,
-    kehadiran: currentUser.role==='guru' ? renderKehadiranGuruMode : renderKehadiran,
+    kehadiran: renderKehadiran,
     kedisiplinan: renderKedisiplinan, kebersihan: renderKebersihan,
     tugas: renderTugas, pengguna: renderPengguna,
     pencapaian: renderPencapaian, pengaturan: renderPengaturan, jadwal: renderJadwal,
@@ -1295,13 +1316,25 @@ document.addEventListener('click', function(e){
 function emptyState(msg){
   return `<div class="empty-state">${ICONS.empty}<p>${msg}</p></div>`;
 }
-function statCard(icon, value, label, sub, color){
-  return `<div class="stat-card">
+function statCard(icon, value, label, sub, color, page){
+  const clickable = page ? ` data-nav="${page}" role="button" tabindex="0"` : '';
+  return `<div class="stat-card${page?' stat-card-link':''}"${clickable}>
     <div class="stat-icon" style="background:color-mix(in srgb, ${color} 14%, white); color:${color}">${icon}</div>
     <div class="stat-value">${value}</div>
     <div class="stat-label">${label}</div>
     ${sub?`<div class="stat-sub" style="color:${color}">${sub}</div>`:''}
   </div>`;
+}
+/* Hanya sertakan tautan navigasi bila halaman tujuan memang bisa diakses oleh akun yang sedang login */
+function navPageIfAllowed(page){
+  return getNavForUser(currentUser).some(n=>n.key===page) ? page : null;
+}
+/* Pasang event klik & keyboard pada seluruh stat-card yang punya data-nav di dalam elemen tertentu */
+function bindStatCardNav(container){
+  container.querySelectorAll('.stat-card[data-nav]').forEach(el=>{
+    el.addEventListener('click', ()=> navigate(el.dataset.nav));
+    el.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); navigate(el.dataset.nav); } });
+  });
 }
 
 /* ================= DASHBOARD HELPERS ================= */
@@ -1458,14 +1491,14 @@ function renderDashboard(){
   const content = document.getElementById('content');
   content.innerHTML = `
     <div class="stat-grid">
-      ${statCard(ICONS.siswa, totalSiswa, 'Total Siswa', '', 'var(--primary)')}
-      ${!isGuru?statCard(ICONS.guru, totalGuru, 'Total Guru', '', 'var(--accent)'):''}
-      ${statCard(ICONS.kehadiran, kehadiranDetailHariIni.length? pctHadir+'%' : '-', 'Kehadiran Hari Ini', kehadiranDetailHariIni.length? hadirCount+' dari '+kehadiranDetailHariIni.length+' tercatat' : 'Belum ada data', pctHadir>=85?'var(--success)':'var(--warn)')}
-      ${!isGuru?statCard(ICONS.disiplin, pelanggaranHariIni, 'Pelanggaran Hari Ini', 'Kedisiplinan siswa', pelanggaranHariIni>0?'var(--danger)':'var(--success)'):''}
-      ${!isGuru?statCard(ICONS.bersih, avgBersih!==null? avgBersih+'%':'-', 'Rata-rata Kebersihan', avgBersih!==null? kebersihanHariIni.length+' kelas dinilai':'Belum ada data', 'var(--primary)'):''}
-      ${statCard(ICONS.mengajar, sesiGuruHariIni.length? pctMengajar+'%':'-', 'Kehadiran Guru Hari Ini', sesiGuruHariIni.length? sesiGuruMengajar.length+' dari '+sesiGuruHariIni.length+' sesi ada materi':'Belum ada data', 'var(--accent)')}
-      ${!isGuru?statCard(ICONS.warningTriangle, siswaPerhatian.length, 'Siswa Perlu Perhatian', 'Kehadiran / kedisiplinan', siswaPerhatian.length>0?'var(--danger)':'var(--success)'):''}
-      ${statCard(ICONS.clipboard, tugasPending.length, 'Tugas Belum Selesai', 'Catatan dari guru', tugasPending.length>0?'var(--warn)':'var(--success)')}
+      ${statCard(ICONS.siswa, totalSiswa, 'Total Siswa', '', 'var(--primary)', navPageIfAllowed('siswa'))}
+      ${!isGuru?statCard(ICONS.guru, totalGuru, 'Total Guru', '', 'var(--accent)', navPageIfAllowed('guru')):''}
+      ${statCard(ICONS.kehadiran, kehadiranDetailHariIni.length? pctHadir+'%' : '-', 'Kehadiran Hari Ini', kehadiranDetailHariIni.length? hadirCount+' dari '+kehadiranDetailHariIni.length+' tercatat' : 'Belum ada data', pctHadir>=85?'var(--success)':'var(--warn)', navPageIfAllowed('kehadiran'))}
+      ${!isGuru?statCard(ICONS.disiplin, pelanggaranHariIni, 'Pelanggaran Hari Ini', 'Kedisiplinan siswa', pelanggaranHariIni>0?'var(--danger)':'var(--success)', navPageIfAllowed('kedisiplinan')):''}
+      ${!isGuru?statCard(ICONS.bersih, avgBersih!==null? avgBersih+'%':'-', 'Rata-rata Kebersihan', avgBersih!==null? kebersihanHariIni.length+' kelas dinilai':'Belum ada data', 'var(--primary)', navPageIfAllowed('kebersihan')):''}
+      ${statCard(ICONS.mengajar, sesiGuruHariIni.length? pctMengajar+'%':'-', 'Kehadiran Guru Hari Ini', sesiGuruHariIni.length? sesiGuruMengajar.length+' dari '+sesiGuruHariIni.length+' sesi ada materi':'Belum ada data', 'var(--accent)', navPageIfAllowed('jadwal'))}
+      ${!isGuru?statCard(ICONS.warningTriangle, siswaPerhatian.length, 'Siswa Perlu Perhatian', 'Kehadiran / kedisiplinan', siswaPerhatian.length>0?'var(--danger)':'var(--success)', navPageIfAllowed('siswa')):''}
+      ${statCard(ICONS.clipboard, tugasPending.length, 'Tugas Belum Selesai', 'Catatan dari guru', tugasPending.length>0?'var(--warn)':'var(--success)', navPageIfAllowed('tugas'))}
     </div>
 
     <div class="dash-grid-2">
@@ -1571,6 +1604,7 @@ function renderDashboard(){
   document.getElementById('dash-trend-chart').innerHTML = trend.length>=2 ? lineChartSVG(trend) : emptyState('Belum cukup data untuk menampilkan tren kehadiran.');
   drawDashSiswaTidakHadir();
   drawDashGuruTidakMengajar();
+  bindStatCardNav(content);
 
   const donutBlock = document.getElementById('dash-donut-chart');
   if(distribusi.length===0){
@@ -1684,11 +1718,16 @@ function buildPesanTidakHadirWa({namaSiswa, kelas, tanggal, status, keterangan})
   pesan += `\n\n— ${namaSekolah}`;
   return pesan;
 }
-function buildPesanIngatkanGuru({namaGuru, mapel, kelas, jamLabel}){
+function buildPesanIngatkanGuru(namaGuru, sesiList){
   const namaSekolah = (DB.settings && DB.settings.schoolName) || 'SMA Al Azhar Plus Kota Bogor';
   let pesan = `Assalamu'alaikum, Bapak/Ibu *${namaGuru}*.\n\n`;
-  pesan += `Mengingatkan bahwa hari ini, ${formatDateLong(todayStr())}, Bapak/Ibu terjadwal mengajar *${mapel}* di kelas *${kelas}* pada jam ke-${jamLabel}, namun data kehadiran/materi pembelajaran belum diinput di sistem.\n\n`;
-  pesan += 'Mohon segera mengisi kehadiran & materi pembelajaran pada aplikasi, atau menghubungi piket apabila berhalangan hadir. Terima kasih.';
+  pesan += `Mengingatkan bahwa hari ini, ${formatDateLong(todayStr())}, Bapak/Ibu terjadwal mengajar namun data kehadiran/materi pembelajaran belum diinput pada sesi berikut:\n`;
+  sesiList.forEach(j=>{
+    const jamLabel = Number(j.jamKeMulai)===Number(j.jamKeSelesai) ? String(j.jamKeMulai) : (j.jamKeMulai+'-'+j.jamKeSelesai);
+    const waktuLabel = (j.waktuMulai && j.waktuSelesai) ? (' ('+j.waktuMulai+'-'+j.waktuSelesai+')') : '';
+    pesan += `- ${j.mapel} kelas ${j.kelas}, jam ke-${jamLabel}${waktuLabel}\n`;
+  });
+  pesan += '\nMohon segera mengisi kehadiran & materi pembelajaran pada aplikasi, atau menghubungi piket apabila berhalangan hadir. Terima kasih.';
   pesan += `\n\n— ${namaSekolah}`;
   return pesan;
 }
@@ -1698,10 +1737,19 @@ function drawDashSiswaTidakHadir(){
   const grouped = computeSiswaTidakHadirHariIni();
   const kelasKeys = Object.keys(grouped).sort();
   if(kelasKeys.length===0){ block.innerHTML = emptyState('Alhamdulillah, belum ada siswa yang tercatat tidak hadir hari ini.'); return; }
-  block.innerHTML = kelasKeys.map(k=>{
+  block.innerHTML = `<div class="dash-scroll-wrap">${kelasKeys.map((k,ki)=>{
     const list = [...grouped[k]].sort((a,b)=>a.nama.localeCompare(b.nama));
-    return `<div class="dash-kelas-block">
-      <div class="dash-kelas-title"><span class="pill pill-gray">${escapeHtml(k)}</span><span class="dash-kelas-count">${list.length} siswa tidak hadir</span></div>
+    const sakit = list.filter(x=>x.status==='Sakit').length;
+    const izin = list.filter(x=>x.status==='Izin').length;
+    const alpa = list.filter(x=>x.status==='Alpa').length;
+    const ringkas = [sakit&&(sakit+' Sakit'), izin&&(izin+' Izin'), alpa&&(alpa+' Alpa')].filter(Boolean).join(', ');
+    return `<details class="dash-kelas-block" ${ki===0?'open':''}>
+      <summary class="dash-kelas-title">
+        <span class="pill pill-gray">${escapeHtml(k)}</span>
+        <span class="dash-kelas-count">${list.length} siswa &bull; ${ringkas}</span>
+        <span class="dash-caret">${ICONS.chevronDown}</span>
+      </summary>
+      <div class="dash-kelas-body">
       ${list.map(r=>{
         const siswa = DB.siswa.find(s=>s.id===r.siswaId);
         const hp = siswa ? (siswa.hp||'') : '';
@@ -1713,10 +1761,12 @@ function drawDashSiswaTidakHadir(){
           ${nomor?`<button class="btn btn-outline btn-sm btn-wa-tidak-hadir" data-nomor="${nomor}" data-status="${escapeHtml(r.status)}" data-ket="${escapeHtml(r.keterangan||'')}" data-nama="${escapeHtml(r.nama)}" data-kelas="${escapeHtml(k)}">${ICONS.messageCircle} Kabari Ortu</button>`:`<span class="pill pill-gray">Tanpa Nomor</span>`}
         </div>`;
       }).join('')}
-    </div>`;
-  }).join('');
+      </div>
+    </details>`;
+  }).join('')}</div>`;
   block.querySelectorAll('.btn-wa-tidak-hadir').forEach(b=>{
-    b.addEventListener('click', ()=>{
+    b.addEventListener('click', (e)=>{
+      e.preventDefault();
       const pesan = buildPesanTidakHadirWa({namaSiswa:b.dataset.nama, kelas:b.dataset.kelas, tanggal:todayStr(), status:b.dataset.status, keterangan:b.dataset.ket});
       kirimWaKehadiran(b.dataset.nomor, pesan);
     });
@@ -1725,26 +1775,32 @@ function drawDashSiswaTidakHadir(){
 function drawDashGuruTidakMengajar(){
   const block = document.getElementById('dash-guru-tidak-mengajar');
   if(!block) return;
-  const list = computeGuruTidakMengajarHariIni();
-  if(list.length===0){
+  const flat = computeGuruTidakMengajarHariIni();
+  if(flat.length===0){
     block.innerHTML = emptyState(DB.jadwal.length===0 ? 'Belum ada data Jadwal Pelajaran. Lengkapi di menu Jadwal Pelajaran agar informasi ini akurat.' : 'Semua guru terjadwal hari ini sudah mengisi kehadiran mengajarnya.');
     return;
   }
-  block.innerHTML = list.map(j=>{
-    const guru = (j.guruId && DB.guru.find(g=>g.id===j.guruId)) || DB.guru.find(g=>g.nama===j.namaGuru);
+  // Kelompokkan per nama guru saja (tanpa rincian jam per baris) agar tampilan ringkas & tidak panjang
+  const groupedMap = {};
+  flat.forEach(j=>{
+    const key = j.guruId || j.namaGuru;
+    if(!groupedMap[key]) groupedMap[key] = {guruId:j.guruId, namaGuru:j.namaGuru, sesi:[]};
+    groupedMap[key].sesi.push(j);
+  });
+  const groups = Object.values(groupedMap).sort((a,b)=>a.namaGuru.localeCompare(b.namaGuru));
+  block.innerHTML = `<div class="dash-scroll-wrap">${groups.map((g,idx)=>{
+    const guru = (g.guruId && DB.guru.find(x=>x.id===g.guruId)) || DB.guru.find(x=>x.nama===g.namaGuru);
     const hp = guru ? (guru.hp||'') : '';
     const nomor = formatNomorWa(hp);
-    const jamLabel = Number(j.jamKeMulai)===Number(j.jamKeSelesai) ? String(j.jamKeMulai) : (j.jamKeMulai+'-'+j.jamKeSelesai);
-    const waktuLabel = (j.waktuMulai && j.waktuSelesai) ? (' &bull; '+j.waktuMulai+'-'+j.waktuSelesai) : '';
     return `<div class="dash-list-row">
-      <div class="dash-list-main"><b>${escapeHtml(j.namaGuru)}</b><span class="pill ${j.sudahInputAbsen?'pill-amber':'pill-red'}">${j.sudahInputAbsen?'Tanpa Materi':'Belum Input'}</span></div>
-      <div class="dash-list-sub">${escapeHtml(j.mapel)} &bull; Kelas ${escapeHtml(j.kelas)} &bull; Jam ke-${jamLabel}${waktuLabel}</div>
-      ${nomor?`<button class="btn btn-outline btn-sm btn-wa-ingatkan-guru" data-nomor="${nomor}" data-nama="${escapeHtml(j.namaGuru)}" data-mapel="${escapeHtml(j.mapel)}" data-kelas="${escapeHtml(j.kelas)}" data-jam="${jamLabel}">${ICONS.bellRing} Ingatkan</button>`:`<span class="pill pill-gray">Tanpa Nomor</span>`}
+      <div class="dash-list-main"><b>${escapeHtml(g.namaGuru)}</b><span class="pill pill-red">${g.sesi.length} sesi belum diinput</span></div>
+      ${nomor?`<button class="btn btn-outline btn-sm btn-wa-ingatkan-guru" data-idx="${idx}" data-nomor="${nomor}">${ICONS.bellRing} Ingatkan</button>`:'<span class="pill pill-gray">Tanpa Nomor</span>'}
     </div>`;
-  }).join('');
+  }).join('')}</div>`;
   block.querySelectorAll('.btn-wa-ingatkan-guru').forEach(b=>{
     b.addEventListener('click', ()=>{
-      const pesan = buildPesanIngatkanGuru({namaGuru:b.dataset.nama, mapel:b.dataset.mapel, kelas:b.dataset.kelas, jamLabel:b.dataset.jam});
+      const g = groups[Number(b.dataset.idx)];
+      const pesan = buildPesanIngatkanGuru(g.namaGuru, g.sesi);
       kirimWaKehadiran(b.dataset.nomor, pesan);
     });
   });
@@ -2524,10 +2580,16 @@ function drawKehadiranForm(){
   const sessionRec = Object.values(existingMap)[0];
 
   const sessionGuru = sessionRec ? DB.guru.find(g=>g.id===sessionRec.guruId) : null;
+  // Jika akun yang login adalah guru dan sudah terhubung ke data guru, kunci otomatis sebagai guru pengajar jam ini
+  const linkedGuru = (currentUser.role==='guru' && currentUser.guruId) ? DB.guru.find(g=>g.id===currentUser.guruId) : null;
+  const guruUntukMapel = linkedGuru || sessionGuru;
   area.innerHTML = `
   <div class="form-grid" style="margin-bottom:16px;">
-    <div class="field"><label>Guru Pengajar Jam Ini</label><select id="kh-guru"><option value="">- Pilih Guru -</option>${DB.guru.map(g=>`<option value="${g.id}" ${sessionRec&&sessionRec.guruId===g.id?'selected':''}>${escapeHtml(g.nama)} — ${escapeHtml(guruMapelDisplay(g))}</option>`).join('') || '<option value="">Belum ada data guru</option>'}</select></div>
-    <div class="field"><label>Mata Pelajaran</label><select id="kh-mapel">${sessionGuru ? guruMapelArr(sessionGuru).map(m=>`<option value="${escapeHtml(m)}" ${m===sessionRec.mapel?'selected':''}>${escapeHtml(m)}</option>`).join('') : '<option value="">- Pilih guru terlebih dahulu -</option>'}</select></div>
+    ${linkedGuru
+      ? `<div class="field"><label>Guru Pengajar</label><input value="${escapeHtml(linkedGuru.nama)}" disabled style="opacity:.7;"/></div>`
+      : `<div class="field"><label>Guru Pengajar Jam Ini</label><select id="kh-guru"><option value="">- Pilih Guru -</option>${DB.guru.map(g=>`<option value="${g.id}" ${sessionRec&&sessionRec.guruId===g.id?'selected':''}>${escapeHtml(g.nama)} — ${escapeHtml(guruMapelDisplay(g))}</option>`).join('') || '<option value="">Belum ada data guru</option>'}</select></div>`
+    }
+    <div class="field"><label>Mata Pelajaran</label><select id="kh-mapel">${guruUntukMapel ? guruMapelArr(guruUntukMapel).map(m=>`<option value="${escapeHtml(m)}" ${sessionRec&&m===sessionRec.mapel?'selected':''}>${escapeHtml(m)}</option>`).join('') : '<option value="">- Pilih guru terlebih dahulu -</option>'}</select></div>
     <div class="field full"><label>Materi yang Diajarkan</label><input id="kh-materi" placeholder="Contoh: Persamaan Kuadrat" value="${sessionRec?escapeHtml(sessionRec.materi||''):''}"/></div>
   </div>
   <div class="table-wrap"><table><thead><tr><th>Nama</th><th>Status</th><th>Keterangan</th><th>Diisi Pada</th></tr></thead><tbody>
@@ -2542,14 +2604,15 @@ function drawKehadiranForm(){
   <div class="card-sub" style="margin-top:8px;">Waktu pengisian dicatat otomatis oleh sistem sesuai jam saat data disimpan, dan tidak dapat diubah secara manual.</div>
   <div style="margin-top:16px; text-align:right;"><button class="btn btn-primary" id="btn-save-kehadiran">Simpan Absensi</button></div>`;
 
-  document.getElementById('kh-guru').addEventListener('change', e=>{
+  document.getElementById('kh-guru') && document.getElementById('kh-guru').addEventListener('change', e=>{
     const guru = DB.guru.find(g=>g.id===e.target.value);
     const arr = guruMapelArr(guru);
     document.getElementById('kh-mapel').innerHTML = arr.length ? arr.map(m=>`<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('') : '<option value="">-</option>';
   });
 
   document.getElementById('btn-save-kehadiran').addEventListener('click', async ()=>{
-    const guru = DB.guru.find(g=>g.id===document.getElementById('kh-guru').value);
+    const guruSelEl = document.getElementById('kh-guru');
+    const guru = linkedGuru || DB.guru.find(g=>g.id===(guruSelEl?guruSelEl.value:''));
     const mapel = document.getElementById('kh-mapel').value.trim();
     const materi = document.getElementById('kh-materi').value.trim();
     const rows = area.querySelectorAll('.kh-status');
@@ -2696,94 +2759,6 @@ function openKirimWaKehadiranModal(sesiKey){
       b.classList.remove('btn-primary'); b.classList.add('btn-outline');
     });
   });
-}
-
-/* ================= KEHADIRAN SISWA (Guru - input ringkas jumlah hadir) ================= */
-function renderKehadiranGuruMode(){
-  const content = document.getElementById('content');
-  content.innerHTML = `
-    <div class="card">
-      <div class="card-head"><div class="flex items-center gap-8"><span class="card-icon-badge">${ICONS.kehadiran}</span><div><h3>Input Jumlah Kehadiran Siswa</h3><div class="card-sub">Laporkan jumlah siswa yang hadir per kelas hari ini</div></div></div></div>
-      <div class="toolbar">
-        <input type="date" class="select-input" id="kg-tanggal" value="${todayStr()}"/>
-        <select class="select-input" id="kg-kelas"><option value="">Pilih Kelas</option>${KELAS_LIST.map(k=>`<option value="${k}">${k}</option>`).join('')}</select>
-        <select class="select-input" id="kg-jamke">${JAM_KE_LIST.map(j=>`<option value="${j}">Jam Ke-${j}</option>`).join('')}</select>
-      </div>
-      <div id="kg-form-area"></div>
-    </div>
-    <div class="card">
-      <div class="card-head"><div class="flex items-center gap-8"><span class="card-icon-badge">${ICONS.clipboard}</span><div><h3>Laporan yang Sudah Diinput</h3><div class="card-sub">Riwayat laporan jumlah kehadiran per jam pelajaran</div></div></div></div>
-      <div id="kg-history"></div>
-    </div>
-  `;
-  document.getElementById('kg-tanggal').addEventListener('change', drawKehadiranGuruForm);
-  document.getElementById('kg-kelas').addEventListener('change', drawKehadiranGuruForm);
-  document.getElementById('kg-jamke').addEventListener('change', drawKehadiranGuruForm);
-  drawKehadiranGuruForm();
-  drawKehadiranGuruHistory();
-}
-function drawKehadiranGuruForm(){
-  const tanggal = document.getElementById('kg-tanggal').value;
-  const kelas = document.getElementById('kg-kelas').value;
-  const jamKe = Number(document.getElementById('kg-jamke').value)||1;
-  const area = document.getElementById('kg-form-area');
-  if(!kelas){ area.innerHTML = emptyState('Pilih kelas terlebih dahulu.'); return; }
-  const totalSiswa = DB.siswa.filter(s=>s.kelas===kelas).length;
-  const existing = DB.kehadiran.find(r=> !r.siswaId && r.tanggal===tanggal && r.kelas===kelas && Number(r.jamKe||1)===jamKe);
-  // Bila akun guru ini sudah terhubung ke data guru, otomatis pakai nama & mapel guru tsb sebagai guru pengajar jam ini
-  const linkedGuru = currentUser.guruId ? DB.guru.find(g=>g.id===currentUser.guruId) : null;
-  const linkedGuruMapel = guruMapelArr(linkedGuru);
-  area.innerHTML = `
-    <div class="form-grid">
-      ${linkedGuru
-        ? `<div class="field"><label>Guru Pengajar</label><input value="${escapeHtml(linkedGuru.nama)}" disabled style="opacity:.7;"/></div>
-           <div class="field"><label>Mata Pelajaran</label><select id="kg-mapel">${linkedGuruMapel.map(m=>`<option value="${escapeHtml(m)}" ${existing&&existing.mapel===m?'selected':''}>${escapeHtml(m)}</option>`).join('') || '<option value="">-</option>'}</select></div>`
-        : `<div class="field"><label>Guru Pengajar</label><select id="kg-guru"><option value="">- Pilih Guru -</option>${DB.guru.map(g=>`<option value="${g.id}" ${existing&&existing.guruId===g.id?'selected':''}>${escapeHtml(g.nama)} — ${escapeHtml(guruMapelDisplay(g))}</option>`).join('') || '<option value="">Belum ada data guru</option>'}</select></div>
-           <div class="field"><label>Mata Pelajaran</label><select id="kg-mapel">${existing&&existing.guruId ? guruMapelArr(DB.guru.find(g=>g.id===existing.guruId)).map(m=>`<option value="${escapeHtml(m)}" ${existing.mapel===m?'selected':''}>${escapeHtml(m)}</option>`).join('') : '<option value="">- Pilih guru terlebih dahulu -</option>'}</select></div>`
-      }
-      <div class="field"><label>Jumlah Siswa Terdaftar</label><input type="number" id="kg-total" value="${existing?existing.jumlahTotal:totalSiswa}"/></div>
-      <div class="field"><label>Jumlah Hadir</label><input type="number" min="0" id="kg-hadir" value="${existing?existing.jumlahHadir:''}" placeholder="Contoh: 30"/></div>
-      <div class="field full"><label>Materi yang Diajarkan</label><input id="kg-materi" placeholder="Contoh: Persamaan Kuadrat" value="${existing?escapeHtml(existing.materi||''):''}"/></div>
-      <div class="field full"><label>Keterangan (opsional)</label><textarea id="kg-ket" rows="2" placeholder="Contoh: 2 siswa izin, 1 sakit">${existing?escapeHtml(existing.keterangan||''):''}</textarea></div>
-    </div>
-    <div style="margin-top:16px; text-align:right;"><button class="btn btn-primary" id="btn-save-kg">Simpan Laporan</button></div>
-  `;
-  if(!linkedGuru){
-    const guruSel = document.getElementById('kg-guru');
-    guruSel.addEventListener('change', e=>{
-      const guru = DB.guru.find(g=>g.id===e.target.value);
-      const arr = guruMapelArr(guru);
-      document.getElementById('kg-mapel').innerHTML = arr.length ? arr.map(m=>`<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('') : '<option value="">-</option>';
-    });
-  }
-  document.getElementById('btn-save-kg').addEventListener('click', async ()=>{
-    const hadir = document.getElementById('kg-hadir').value;
-    if(hadir===''){ toast('Isi jumlah siswa hadir terlebih dahulu', 'error'); return; }
-    const guru = linkedGuru || DB.guru.find(g=>g.id===document.getElementById('kg-guru').value);
-    const mapel = document.getElementById('kg-mapel').value.trim();
-    const data = {
-      id: existing?existing.id:uid(), tanggal, kelas, jamKe,
-      guruId: guru?guru.id:null, namaGuru: guru?guru.nama:'', mapel,
-      materi: document.getElementById('kg-materi').value.trim(),
-      jumlahHadir: Number(hadir), jumlahTotal: Number(document.getElementById('kg-total').value)||totalSiswa,
-      keterangan: document.getElementById('kg-ket').value.trim(),
-      inputOleh: currentUser.name,
-    };
-    await upsertRecord('kehadiran', data, !!existing, drawKehadiranGuruHistory);
-    toast('Laporan kehadiran kelas '+kelas+' jam ke-'+jamKe+' tersimpan', 'success');
-    if(!firebaseReady) drawKehadiranGuruHistory();
-  });
-}
-function drawKehadiranGuruHistory(){
-  const wrap = document.getElementById('kg-history');
-  const rows = [...DB.kehadiran].filter(r=>!r.siswaId).sort((a,b)=> b.tanggal.localeCompare(a.tanggal) || Number(b.jamKe||1)-Number(a.jamKe||1));
-  if(rows.length===0){ wrap.innerHTML = emptyState('Belum ada laporan kehadiran yang diinput.'); return; }
-  wrap.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Kelas</th><th>Jam Ke</th><th>Guru</th><th>Mapel</th><th>Materi</th><th>Hadir</th><th>Persentase</th></tr></thead><tbody>
-    ${rows.map(r=>{
-      const pct = r.jumlahTotal? Math.round(r.jumlahHadir/r.jumlahTotal*100) : 0;
-      return `<tr><td>${formatDateShort(r.tanggal)}</td><td><span class="pill pill-gray">${escapeHtml(r.kelas)}</span></td><td>Ke-${r.jamKe||1}</td><td>${escapeHtml(r.namaGuru||'-')}</td><td>${escapeHtml(r.mapel||'-')}</td><td>${escapeHtml(r.materi||'-')}</td><td>${r.jumlahHadir}/${r.jumlahTotal}</td><td><span class="pill ${pct>=85?'pill-green':pct>=60?'pill-amber':'pill-red'}">${pct}%</span></td></tr>`;
-    }).join('')}
-  </tbody></table></div>`;
 }
 
 /* ================= KEDISIPLINAN ================= */
@@ -3299,22 +3274,17 @@ async function renderPencapaian(){
 
 /* Menggambar seluruh data pencapaian (nilai, kehadiran, kedisiplinan, catatan tugas) untuk satu siswa.
    Seluruh bagian ini hanya menampilkan data (read-only), tidak ada aksi ubah/hapus. */
-function drawPencapaianDetail(siswaId, isSiswaRole){
-  const wrap = document.getElementById('pencapaian-detail');
+/* Menghitung seluruh data pencapaian seorang siswa dalam satu tempat,
+   dipakai bersama oleh tampilan layar, cetak, dan unduh PDF agar datanya selalu identik. */
+function computePencapaianData(siswaId){
   const siswa = DB.siswa.find(s=>s.id===siswaId);
-  if(!siswa){ wrap.innerHTML = emptyState('Data siswa tidak ditemukan.'); return; }
-
-  // Kehadiran
+  if(!siswa) return null;
   const kh = DB.kehadiran.filter(r=>r.siswaId===siswa.id);
   const hadir = kh.filter(r=>r.status==='Hadir').length;
   const kehadiranPct = kh.length ? Math.round(hadir/kh.length*100) : null;
-
-  // Kedisiplinan
   const kd = DB.kedisiplinan.filter(r=>r.siswaId===siswa.id);
   const poin = kd.reduce((a,b)=>a+(Number(b.poin)||0),0);
   const pelanggaranTerakhir = [...kd].sort((a,b)=>(b.tanggal||'').localeCompare(a.tanggal||'')).slice(0,5);
-
-  // Rata-rata nilai per mata pelajaran (rata-rata tiap jenis nilai, lalu dirata-rata lagi seperti di halaman Nilai Siswa)
   const nilaiSiswa = DB.nilai.filter(n=>n.siswaId===siswa.id);
   const byMapel = {};
   nilaiSiswa.forEach(n=>{
@@ -3329,11 +3299,16 @@ function drawPencapaianDetail(siswaId, isSiswaRole){
     return {mapel, rata, jumlahEntri};
   });
   const rataKeseluruhan = rataPerMapel.length ? Math.round((rataPerMapel.reduce((a,b)=>a+b.rata,0)/rataPerMapel.length)*10)/10 : null;
-
-  // Catatan tugas untuk kelas siswa ini
   const tugasKelas = [...DB.tugas].filter(t=>t.kelas===siswa.kelas).sort((a,b)=>(a.deadline||'').localeCompare(b.deadline||''));
-
   const namaSekolah = (DB.settings && DB.settings.schoolName) || 'SMA Al Azhar Plus Kota Bogor';
+  return {siswa, kh, kehadiranPct, poin, pelanggaranTerakhir, rataPerMapel, rataKeseluruhan, tugasKelas, namaSekolah};
+}
+function drawPencapaianDetail(siswaId, isSiswaRole){
+  const wrap = document.getElementById('pencapaian-detail');
+  const data = computePencapaianData(siswaId);
+  if(!data){ wrap.innerHTML = emptyState('Data siswa tidak ditemukan.'); return; }
+  const { siswa, kh, kehadiranPct, poin, pelanggaranTerakhir, rataPerMapel, rataKeseluruhan, tugasKelas, namaSekolah } = data;
+
   const tanggalCetak = new Date().toLocaleString('id-ID', {dateStyle:'long', timeStyle:'short'});
   const ringkasanTeks = 'Rata-rata nilai '+(rataKeseluruhan!==null?rataKeseluruhan:'belum tersedia')+
     ', persentase kehadiran '+(kehadiranPct!==null?kehadiranPct+'%':'belum tersedia')+
@@ -3391,8 +3366,9 @@ function drawPencapaianDetail(siswaId, isSiswaRole){
 
 /* ---------------- Cetak & Unduh PDF (Pencapaian Saya) ----------------
    Cetak memakai fitur print bawaan browser (CSS @media print men-scope tampilan
-   hanya ke #pencapaian-print-area). Unduh PDF memakai html2canvas + jsPDF yang
-   dimuat sesuai kebutuhan (lazy-loaded) agar halaman tetap ringan saat awal dibuka. */
+   hanya ke #pencapaian-print-area). Unduh PDF digambar langsung memakai jsPDF
+   (bukan screenshot DOM) agar hasilnya tajam, berwarna, ringan, dan tidak
+   tergantung dukungan CSS modern dari browser saat proses konversi. */
 function loadExternalScript(src){
   return new Promise((resolve, reject)=>{
     if(document.querySelector('script[src="'+src+'"]')){ resolve(); return; }
@@ -3401,43 +3377,189 @@ function loadExternalScript(src){
     document.head.appendChild(el);
   });
 }
-async function ensurePdfLibs(){
-  if(!window.html2canvas){ await loadExternalScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'); }
+async function ensurePdfLib(){
   if(!window.jspdf){ await loadExternalScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'); }
+}
+/* Menggambar dokumen PDF laporan pencapaian langsung lewat jsPDF (bukan screenshot halaman),
+   supaya hasilnya berwarna, tajam, ringan, dan pasti berhasil di semua browser. */
+function buildPencapaianPdfDoc(data){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF('p','mm','a4');
+  const pageW = 210, pageH = 297, mx = 14;
+  const PRIMARY=[11,110,79], ACCENT=[201,150,44], SUCCESS=[30,142,90], WARN=[184,134,11],
+        DANGER=[192,57,43], LIGHT=[244,247,245], MUTED=[110,120,115], INK=[35,40,37],
+        BORDER=[222,227,221], WHITE=[255,255,255];
+  let y = 40;
+
+  function drawFooter(){
+    doc.setDrawColor(...BORDER); doc.setLineWidth(0.2);
+    doc.line(mx, pageH-14, pageW-mx, pageH-14);
+    doc.setFontSize(8); doc.setTextColor(...MUTED); doc.setFont('helvetica','normal');
+    doc.text('Dibuat otomatis oleh Sistem Informasi Manajemen '+data.namaSekolah, mx, pageH-9);
+    doc.text('Halaman '+doc.internal.getNumberOfPages(), pageW-mx, pageH-9, {align:'right'});
+  }
+  function ensureSpace(h){
+    if(y + h > pageH - 18){ drawFooter(); doc.addPage(); y = 16; }
+  }
+  function sectionTitle(title, iconColor){
+    ensureSpace(12);
+    doc.setFillColor(...(iconColor||PRIMARY)); doc.circle(mx+1.3, y+1.7, 1.3, 'F');
+    doc.setTextColor(...INK); doc.setFont('helvetica','bold'); doc.setFontSize(11.5);
+    doc.text(title, mx+6, y+3);
+    y += 8;
+  }
+  function pillBadge(text, x, yTop, color){
+    doc.setFont('helvetica','bold'); doc.setFontSize(8);
+    const w = doc.getTextWidth(text) + 5;
+    doc.setFillColor(color[0], color[1], color[2]); doc.setDrawColor(color[0],color[1],color[2]);
+    doc.roundedRect(x, yTop, w, 5.4, 2.7, 2.7, 'F');
+    doc.setTextColor(255,255,255);
+    doc.text(text, x + w/2, yTop + 3.7, {align:'center'});
+    return w;
+  }
+
+  // ---- Header banner ----
+  doc.setFillColor(...PRIMARY); doc.rect(0, 0, pageW, 30, 'F');
+  doc.setFillColor(...ACCENT); doc.rect(0, 30, pageW, 2, 'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(15);
+  doc.text(data.namaSekolah, mx, 14);
+  doc.setFont('helvetica','normal'); doc.setFontSize(10.5);
+  doc.text('Laporan Pencapaian Siswa', mx, 22);
+  doc.setFontSize(8.5);
+  doc.text('Dicetak: '+new Date().toLocaleString('id-ID', {dateStyle:'long', timeStyle:'short'}), pageW-mx, 22, {align:'right'});
+
+  // ---- Kartu identitas siswa ----
+  doc.setFillColor(...LIGHT); doc.roundedRect(mx, y, pageW-mx*2, 22, 2, 2, 'F');
+  doc.setTextColor(...INK); doc.setFont('helvetica','bold'); doc.setFontSize(13);
+  doc.text(data.siswa.nama || '-', mx+6, y+9);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(...MUTED);
+  doc.text('Kelas '+(data.siswa.kelas||'-')+'   -   NIS '+(data.siswa.nis||'-'), mx+6, y+16);
+  y += 30;
+
+  // ---- Kotak ringkasan berwarna (Rata-rata Nilai / Kehadiran / Poin) ----
+  const boxW = (pageW - mx*2 - 10) / 3;
+  const stats = [
+    {label:'Rata-rata Nilai', value: data.rataKeseluruhan!==null?String(data.rataKeseluruhan):'-', color: data.rataKeseluruhan===null?MUTED:data.rataKeseluruhan>=75?SUCCESS:data.rataKeseluruhan>=60?WARN:DANGER},
+    {label:'Persentase Kehadiran', value: data.kehadiranPct!==null?data.kehadiranPct+'%':'-', color: data.kehadiranPct===null?MUTED:data.kehadiranPct>=85?SUCCESS:data.kehadiranPct>=60?WARN:DANGER},
+    {label:'Poin Pelanggaran', value:String(data.poin), color: data.poin===0?SUCCESS:data.poin<15?WARN:DANGER},
+  ];
+  stats.forEach((s,i)=>{
+    const bx = mx + i*(boxW+5);
+    doc.setFillColor(...WHITE); doc.setDrawColor(...BORDER); doc.roundedRect(bx, y, boxW, 26, 2, 2, 'FD');
+    doc.setFillColor(...s.color); doc.roundedRect(bx, y, 3, 26, 1.5, 1.5, 'F');
+    doc.setTextColor(...s.color); doc.setFont('helvetica','bold'); doc.setFontSize(17);
+    doc.text(s.value, bx+8, y+14);
+    doc.setTextColor(...MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(7.6);
+    doc.text(s.label, bx+8, y+21, {maxWidth:boxW-11});
+  });
+  y += 34;
+
+  // ---- Ringkasan kalimat ----
+  ensureSpace(14);
+  doc.setFillColor(...LIGHT); doc.roundedRect(mx, y, pageW-mx*2, 14, 2, 2, 'F');
+  doc.setTextColor(...INK); doc.setFont('helvetica','bold'); doc.setFontSize(8.6);
+  doc.text('Ringkasan:', mx+5, y+5.5);
+  doc.setFont('helvetica','normal');
+  const ringkasan = 'Rata-rata nilai '+(data.rataKeseluruhan!==null?data.rataKeseluruhan:'belum tersedia')+', kehadiran '+(data.kehadiranPct!==null?data.kehadiranPct+'%':'belum tersedia')+', poin pelanggaran '+data.poin+'.';
+  doc.text(ringkasan, mx+5, y+10.5, {maxWidth:pageW-mx*2-10});
+  y += 20;
+
+  // ---- Tabel Rata-rata Nilai per Mapel ----
+  sectionTitle('Rata-rata Nilai per Mata Pelajaran', ACCENT);
+  if(data.rataPerMapel.length===0){
+    doc.setFont('helvetica','italic'); doc.setFontSize(9); doc.setTextColor(...MUTED);
+    doc.text('Belum ada data nilai untuk siswa ini.', mx, y+4); y += 12;
+  }else{
+    const colW = [pageW-mx*2-70, 40, 30];
+    ensureSpace(9);
+    doc.setFillColor(...PRIMARY); doc.rect(mx, y, pageW-mx*2, 8, 'F');
+    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(8.6);
+    doc.text('Mata Pelajaran', mx+3, y+5.5);
+    doc.text('Rata-rata', mx+colW[0]+3, y+5.5);
+    doc.text('Jumlah Entri', mx+colW[0]+colW[1]+3, y+5.5);
+    y += 8;
+    data.rataPerMapel.forEach((m, ri)=>{
+      ensureSpace(9);
+      if(ri%2===1){ doc.setFillColor(...LIGHT); doc.rect(mx, y, pageW-mx*2, 8, 'F'); }
+      doc.setFont('helvetica','normal'); doc.setFontSize(8.8); doc.setTextColor(...INK);
+      doc.text(String(m.mapel), mx+3, y+5.5, {maxWidth:colW[0]-5});
+      const badgeColor = m.rata>=75?SUCCESS:m.rata>=60?WARN:DANGER;
+      pillBadge(String(m.rata), mx+colW[0]+3, y+1.3, badgeColor);
+      doc.setTextColor(...INK);
+      doc.text(String(m.jumlahEntri), mx+colW[0]+colW[1]+3, y+5.5);
+      y += 8;
+    });
+    y += 6;
+  }
+
+  // ---- Tabel Riwayat Pelanggaran ----
+  sectionTitle('Riwayat Pelanggaran Terakhir', DANGER);
+  if(data.pelanggaranTerakhir.length===0){
+    doc.setFont('helvetica','italic'); doc.setFontSize(9); doc.setTextColor(...SUCCESS);
+    doc.text('Tidak ada catatan pelanggaran. Pertahankan sikap baik!', mx, y+4); y += 12;
+  }else{
+    const colW = [40, pageW-mx*2-40-35, 35];
+    ensureSpace(9);
+    doc.setFillColor(...PRIMARY); doc.rect(mx, y, pageW-mx*2, 8, 'F');
+    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(8.6);
+    doc.text('Tanggal', mx+3, y+5.5);
+    doc.text('Jenis', mx+colW[0]+3, y+5.5);
+    doc.text('Poin', mx+colW[0]+colW[1]+3, y+5.5);
+    y += 8;
+    data.pelanggaranTerakhir.forEach((p, ri)=>{
+      ensureSpace(9);
+      if(ri%2===1){ doc.setFillColor(...LIGHT); doc.rect(mx, y, pageW-mx*2, 8, 'F'); }
+      doc.setFont('helvetica','normal'); doc.setFontSize(8.8); doc.setTextColor(...INK);
+      doc.text(formatDateShort(p.tanggal), mx+3, y+5.5);
+      doc.text(String(p.jenis||'-'), mx+colW[0]+3, y+5.5, {maxWidth:colW[1]-5});
+      pillBadge(p.poin+' poin', mx+colW[0]+colW[1]+3, y+1.3, DANGER);
+      y += 8;
+    });
+    y += 6;
+  }
+
+  // ---- Tabel Catatan Tugas ----
+  sectionTitle('Catatan Tugas Kelas '+(data.siswa.kelas||'-'), PRIMARY);
+  if(data.tugasKelas.length===0){
+    doc.setFont('helvetica','italic'); doc.setFontSize(9); doc.setTextColor(...MUTED);
+    doc.text('Belum ada catatan tugas untuk kelas ini.', mx, y+4); y += 12;
+  }else{
+    const colW = [pageW-mx*2-60-40, 60, 40];
+    ensureSpace(9);
+    doc.setFillColor(...PRIMARY); doc.rect(mx, y, pageW-mx*2, 8, 'F');
+    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(8.6);
+    doc.text('Judul Tugas', mx+3, y+5.5);
+    doc.text('Tenggat', mx+colW[0]+3, y+5.5);
+    doc.text('Status', mx+colW[0]+colW[1]+3, y+5.5);
+    y += 8;
+    data.tugasKelas.forEach((t, ri)=>{
+      ensureSpace(9);
+      if(ri%2===1){ doc.setFillColor(...LIGHT); doc.rect(mx, y, pageW-mx*2, 8, 'F'); }
+      doc.setFont('helvetica','normal'); doc.setFontSize(8.8); doc.setTextColor(...INK);
+      doc.text(String(t.judul||'-'), mx+3, y+5.5, {maxWidth:colW[0]-5});
+      doc.text(t.deadline?formatDateShort(t.deadline):'-', mx+colW[0]+3, y+5.5);
+      pillBadge(String(t.status||'-'), mx+colW[0]+colW[1]+3, y+1.3, t.status==='Selesai'?SUCCESS:WARN);
+      y += 8;
+    });
+  }
+
+  drawFooter();
+  return doc;
 }
 async function downloadPencapaianPdf(){
   const btn = document.getElementById('btn-download-pencapaian');
-  const area = document.getElementById('pencapaian-print-area');
-  if(!area){ toast('Data pencapaian belum siap untuk diunduh', 'error'); return; }
-  const siswa = DB.siswa.find(s=>s.id===pencapaianSelectedId);
+  const data = computePencapaianData(pencapaianSelectedId);
+  if(!data){ toast('Data pencapaian belum siap untuk diunduh', 'error'); return; }
   const originalLabel = btn.innerHTML;
   btn.disabled = true; btn.innerHTML = '<span class="icon-spin">'+ICONS.spinner+'</span> Menyiapkan PDF...';
   try{
-    await ensurePdfLibs();
-    document.body.classList.add('pdf-export-mode');
-    const canvas = await window.html2canvas(area, {scale:2, backgroundColor:'#ffffff', useCORS:true});
-    document.body.classList.remove('pdf-export-mode');
-    const imgData = canvas.toDataURL('image/png');
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pageWidth = 210, pageHeight = 297;
-    const imgWidth = pageWidth;
-    const imgHeight = canvas.height * imgWidth / canvas.width;
-    let heightLeft = imgHeight, position = 0;
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
-    while(heightLeft > 0){
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-    }
-    const namaFile = 'Pencapaian-'+(siswa?siswa.nama.replace(/[^a-z0-9]+/gi,'_'):'Siswa')+'-'+todayStr()+'.pdf';
-    pdf.save(namaFile);
+    await ensurePdfLib();
+    const doc = buildPencapaianPdfDoc(data);
+    const namaFile = 'Pencapaian-'+(data.siswa.nama||'Siswa').replace(/[^a-z0-9]+/gi,'_')+'-'+todayStr()+'.pdf';
+    doc.save(namaFile);
     toast('Laporan PDF berhasil diunduh', 'success');
   }catch(err){
     console.error('Gagal membuat PDF:', err);
-    document.body.classList.remove('pdf-export-mode');
     toast('Gagal membuat file PDF. Periksa koneksi internet Anda atau gunakan tombol Cetak.', 'error');
   }finally{
     btn.disabled = false; btn.innerHTML = originalLabel;
